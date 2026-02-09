@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/roda_core",
+]
+
+[workspace.dependencies]
+# The Core Logic
+bytemuck = { version = "1.19", features = ["derive", "min_const_generics", "extern_crate_alloc"] }
+memmap2 = "0.9"     # Industry standard for memory mapping
+thiserror = "2.0"   # Standard error handling
+crossbeam-utils = "0.8" # For CachePadded<T> (prevents false sharing)
+
+# Logging & Telemetry
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Dev / Benchmarking
+criterion = "0.5"   # The gold standard for micro-benchmarking

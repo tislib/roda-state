@@ -1,0 +1,19 @@
+[package]
+name = "roda_core"
+version = "0.1.0"
+edition = "2021"
+description = "A wait-free, cache-friendly state synchronization engine for HFT."
+authors = ["Your Name"]
+
+[dependencies]
+bytemuck = { workspace = true }
+memmap2 = { workspace = true }
+thiserror = { workspace = true }
+crossbeam-utils = { workspace = true }
+libc = "0.2" # Needed for mlock (memory pinning) and sched_setaffinity
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[lib]
+bench = false # We use the 'benches/' directory
