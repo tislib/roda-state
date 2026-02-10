@@ -1,19 +1,21 @@
 [workspace]
+members = ["crates/roda-core"]
 resolver = "2"
-members = [
-    "crates/roda_core",
-]
 
-[workspace.dependencies]
-# The Core Logic
-bytemuck = { version = "1.19", features = ["derive", "min_const_generics", "extern_crate_alloc"] }
-memmap2 = "0.9"     # Industry standard for memory mapping
-thiserror = "2.0"   # Standard error handling
-crossbeam-utils = "0.8" # For CachePadded<T> (prevents false sharing)
+[package]
+name = "roda"
+version = "0.1.0"
+edition = "2024"
 
-# Logging & Telemetry
-tracing = "0.1"
-tracing-subscriber = "0.3"
+[dependencies]
+spdlog-rs = "0.5.2"
+rand = "0.10.0-rc.6"
+roda-core = {path = "crates/roda-core"}
 
-# Dev / Benchmarking
-criterion = "0.5"   # The gold standard for micro-benchmarking
+[dev-dependencies]
+assert_no_alloc = { version = "1.1.2" }
+
+
+[profile.profiling]
+inherits = "release"
+debug = true
