@@ -23,7 +23,7 @@ impl<Key, Value> RodaDirectIndex<Key, Value> {
 }
 
 impl<Key, Value> RodaDirectIndex<Key, Value> {
-    pub fn compute(&self) {
+    pub fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
         todo!()
     }
 }
