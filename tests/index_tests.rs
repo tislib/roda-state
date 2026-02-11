@@ -11,7 +11,7 @@ struct ComplexKey {
 #[test]
 fn test_index_multiple_values() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
 
     for i in 0..5 {
@@ -31,7 +31,7 @@ fn test_index_multiple_values() {
 #[test]
 fn test_multiple_indices_on_same_store() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     
     let index_double = store.direct_index::<u32>();
     let index_triple = store.direct_index::<u32>();
@@ -48,7 +48,7 @@ fn test_multiple_indices_on_same_store() {
 #[test]
 fn test_index_complex_key() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<ComplexKey>();
 
     store.push(100).expect("failed to push");
@@ -61,7 +61,7 @@ fn test_index_complex_key() {
 #[test]
 fn test_index_shallow_clone_sharing() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
     let clone1 = index.shallow_clone();
     let clone2 = clone1.shallow_clone();
@@ -76,7 +76,7 @@ fn test_index_shallow_clone_sharing() {
 #[test]
 fn test_index_collision_overwrite() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
 
     // Both 10 and 20 will map to key 1
@@ -93,7 +93,7 @@ fn test_index_collision_overwrite() {
 #[test]
 fn test_index_not_found() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
 
     store.push(10).expect("failed to push");
@@ -106,7 +106,7 @@ fn test_index_not_found() {
 #[test]
 fn test_concurrent_push_and_index() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
     let index_clone = index.shallow_clone();
 
@@ -135,8 +135,8 @@ fn test_concurrent_push_and_index() {
 #[test]
 fn test_run_worker_with_multiple_stores() {
     let engine = RodaEngine::new();
-    let store_u32 = engine.store::<u32>();
-    let store_string = engine.store::<String>();
+    let store_u32 = engine.store::<u32>(1024);
+    let store_string = engine.store::<String>(1024);
 
     let index_u32 = store_u32.direct_index::<u32>();
     let index_string = store_string.direct_index::<usize>();
@@ -165,7 +165,7 @@ fn test_run_worker_with_multiple_stores() {
 #[test]
 fn test_multiple_workers_reading_index_only_original_computes() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
 
     let reader1 = index.shallow_clone();
@@ -191,7 +191,7 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 #[should_panic]
 fn test_shallow_clone_cannot_compute() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
     let index = store.direct_index::<u32>();
     let shallow = index.shallow_clone();
 

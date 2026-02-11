@@ -3,7 +3,7 @@ use roda_core::RodaEngine;
 #[test]
 fn test_push_then_read_single() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
 
     store.push(42).expect("failed to push value");
 
@@ -14,7 +14,7 @@ fn test_push_then_read_single() {
 #[test]
 fn test_multiple_push_read_in_order() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
 
     // Push a small sequence
     for v in [1u32, 2, 3, 4, 5] {
@@ -30,7 +30,7 @@ fn test_multiple_push_read_in_order() {
 #[test]
 fn test_interleaved_push_and_read() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
 
     store.push(10).expect("failed to push value");
     assert_eq!(store.with(|v| *v), 10);
@@ -48,8 +48,8 @@ fn test_interleaved_push_and_read() {
 fn test_stores_are_isolated_by_type() {
     let engine = RodaEngine::new();
 
-    let u_store = engine.store::<u32>();
-    let i_store = engine.store::<i64>();
+    let u_store = engine.store::<u32>(1024);
+    let i_store = engine.store::<i64>(1024);
 
     u_store.push(1).expect("failed to push value");
     i_store.push(-1).expect("failed to push value");
@@ -68,7 +68,7 @@ fn test_stores_are_isolated_by_type() {
 #[test]
 fn test_push_after_partial_reads() {
     let engine = RodaEngine::new();
-    let store = engine.store::<u32>();
+    let store = engine.store::<u32>(1024);
 
     store.push(100).expect("failed to push value");
     store.push(200).expect("failed to push value");

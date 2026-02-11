@@ -33,6 +33,12 @@ pub struct RodaStore<State> {
 }
 
 impl<State> RodaStore<State> {
+    pub fn reader(&self) -> RodaStore<State> {
+        todo!()
+    }
+}
+
+impl<State> RodaStore<State> {
     pub fn direct_index<Key>(&self) -> RodaDirectIndex<Key, State> {
         todo!()
     }
@@ -51,12 +57,14 @@ pub struct RodaEngine {}
 
 impl RodaEngine {
     pub fn run_worker(&self, runnable: impl FnOnce() + Send + 'static) {
-        thread::spawn(runnable);
+        thread::spawn(move || {
+            runnable();
+        });
     }
 }
 
 impl RodaEngine {
-    pub fn store<State>(&self) -> RodaStore<State> {
+    pub fn store<State>(&self, size: u32) -> RodaStore<State> {
         todo!()
     }
 }
@@ -64,5 +72,46 @@ impl RodaEngine {
 impl RodaEngine {
     pub fn new() -> Self {
         Self {}
+    }
+}
+
+pub struct Aggregator<InValue, OutValue, PartitionKey = ()> {
+    _v: PhantomData<InValue>,
+    _out_v: PhantomData<OutValue>,
+    _partition_key: PhantomData<PartitionKey>,
+}
+
+impl<InValue, OutValue, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+    pub fn pipe(source: RodaStore<InValue>, target: RodaStore<OutValue>) -> Self {
+        Self {
+            _v: Default::default(),
+            _out_v: Default::default(),
+            _partition_key: Default::default(),
+        }
+    }
+
+    pub fn partition_by(&mut self, key_fn: impl FnOnce(&InValue) -> PartitionKey) {}
+
+    pub fn reduce(&mut self, update_fn: impl FnOnce(u64, &InValue, &mut OutValue)) {}
+}
+
+pub struct Window<InValue, OutValue = ()> {
+    _v: PhantomData<InValue>,
+    _out_v: PhantomData<OutValue>,
+}
+
+impl<InValue, OutValue> Window<InValue, OutValue> {
+    pub fn pipe(source: RodaStore<InValue>, target: RodaStore<OutValue>) -> Self {
+        Self {
+            _v: Default::default(),
+            _out_v: Default::default(),
+        }
+    }
+
+    pub fn reduce(
+        &mut self,
+        window_size: u32,
+        update_fn: impl FnOnce(&[InValue]) -> Option<OutValue>,
+    ) {
     }
 }
