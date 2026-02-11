@@ -24,7 +24,7 @@ fn test_index_multiple_values() {
     }
 
     for i in 0..5 {
-        assert_eq!(index.get(&(i * 10)), Some(&i));
+        assert_eq!(index.get(&(i * 10)).copied(), Some(i));
     }
 }
 
@@ -41,8 +41,8 @@ fn test_multiple_indices_on_same_store() {
     index_double.compute(|x| x * 2);
     index_triple.compute(|x| x * 3);
 
-    assert_eq!(index_double.get(&20), Some(&10));
-    assert_eq!(index_triple.get(&30), Some(&10));
+    assert_eq!(index_double.get(&20).copied(), Some(10));
+    assert_eq!(index_triple.get(&30).copied(), Some(10));
 }
 
 #[test]
@@ -54,8 +54,8 @@ fn test_index_complex_key() {
     store.push(100).expect("failed to push");
     index.compute(|&val| ComplexKey { id: val, category: 1 });
 
-    assert_eq!(index.get(&ComplexKey { id: 100, category: 1 }), Some(&100));
-    assert_eq!(index.get(&ComplexKey { id: 100, category: 2 }), None);
+    assert_eq!(index.get(&ComplexKey { id: 100, category: 1 }).copied(), Some(100));
+    assert_eq!(index.get(&ComplexKey { id: 100, category: 2 }).copied(), None);
 }
 
 #[test]
@@ -69,8 +69,8 @@ fn test_index_shallow_clone_sharing() {
     store.push(42).expect("failed to push");
     index.compute(|&x| x);
 
-    assert_eq!(clone1.get(&42), Some(&42));
-    assert_eq!(clone2.get(&42), Some(&42));
+    assert_eq!(clone1.get(&42).copied(), Some(42));
+    assert_eq!(clone2.get(&42).copied(), Some(42));
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn test_index_collision_overwrite() {
     index.compute(|_| 1);
 
     // Usually a direct index mapping should store the latest value for a given key
-    assert_eq!(index.get(&1), Some(&20));
+    assert_eq!(index.get(&1).copied(), Some(20));
 }
 
 #[test]
@@ -99,8 +99,8 @@ fn test_index_not_found() {
     store.push(10).expect("failed to push");
     index.compute(|x| x + 1);
 
-    assert_eq!(index.get(&11), Some(&10));
-    assert_eq!(index.get(&999), None);
+    assert_eq!(index.get(&11).copied(), Some(10));
+    assert_eq!(index.get(&999).copied(), None);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn test_concurrent_push_and_index() {
     thread::sleep(Duration::from_millis(20));
 
     for i in 0..10 {
-        assert_eq!(index_clone.get(&i), Some(&i));
+        assert_eq!(index_clone.get(&i).copied(), Some(i));
     }
 }
 
@@ -158,8 +158,8 @@ fn test_run_worker_with_multiple_stores() {
     // Wait for workers
     thread::sleep(Duration::from_millis(50));
 
-    assert_eq!(index_u32_reader.get(&100), Some(&100));
-    assert_eq!(index_string_reader.get(&5), Some(&"hello".to_string()));
+    assert_eq!(index_u32_reader.get(&100).copied(), Some(100));
+    assert_eq!(index_string_reader.get(&5).cloned(), Some("hello".to_string()));
 }
 
 #[test]
@@ -182,8 +182,8 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 
     thread::sleep(Duration::from_millis(50));
 
-    assert_eq!(reader1.get(&10), Some(&1));
-    assert_eq!(reader2.get(&20), Some(&2));
+    assert_eq!(reader1.get(&10).copied(), Some(1));
+    assert_eq!(reader2.get(&20).copied(), Some(2));
 }
 
 

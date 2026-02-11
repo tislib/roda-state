@@ -36,6 +36,10 @@ impl<State> RodaStore<State> {
     pub fn reader(&self) -> RodaStore<State> {
         todo!()
     }
+
+    pub fn collect<const N: usize>(&self) -> [&State; N] {
+        todo!()
+    }
 }
 
 impl<State> RodaStore<State> {
@@ -56,8 +60,8 @@ impl<State> RodaStore<State> {}
 pub struct RodaEngine {}
 
 impl RodaEngine {
-    pub fn run_worker(&self, runnable: impl FnOnce() + Send + 'static) {
-        thread::spawn(move || {
+    pub fn run_worker(&self, mut runnable: impl FnMut() + Send + 'static) {
+        thread::spawn(move || loop {
             runnable();
         });
     }

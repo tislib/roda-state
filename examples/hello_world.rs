@@ -28,7 +28,7 @@ pub struct TimeKey {
     pub timestamp: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Signal {
     pub symbol: u16,
     pub timestamp: u64,
@@ -95,7 +95,7 @@ fn main() {
         simple_strategy_pipeline.reduce(2, |candle| {
             let cur = candle[1];
             let prev = candle[0];
-            
+
             if cur.close > prev.close {
                 return Some(Signal {
                     symbol: cur.symbol,
@@ -104,8 +104,8 @@ fn main() {
                     size: min(100, (cur.close - prev.close) as u16),
                 });
             }
-            
+
             None
         })
-    })
+    });
 }
