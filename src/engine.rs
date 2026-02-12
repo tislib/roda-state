@@ -25,3 +25,9 @@ impl RodaEngine {
         Self {}
     }
 }
+
+impl Default for RodaEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}

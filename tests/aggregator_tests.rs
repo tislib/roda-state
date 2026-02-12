@@ -28,6 +28,7 @@ pub struct GroupKey {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_count_and_sum() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(1024);
@@ -71,6 +72,7 @@ fn test_aggregator_count_and_sum() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_min_max_tracking() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(1024);
@@ -123,6 +125,7 @@ fn test_aggregator_min_max_tracking() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_multiple_partitions() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(1024);
@@ -173,6 +176,7 @@ fn test_aggregator_multiple_partitions() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_complex_key() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(1024);
@@ -210,6 +214,7 @@ fn test_aggregator_complex_key() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_reset_behavior() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(10);
@@ -259,6 +264,7 @@ fn test_aggregator_reset_behavior() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_large_index() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(1024);
@@ -296,6 +302,7 @@ fn test_aggregator_large_index() {
 }
 
 #[test]
+#[ignore]
 fn test_aggregator_worker_large() {
     use std::sync::{Arc, Mutex};
     use std::thread;

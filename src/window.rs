@@ -23,7 +23,16 @@ impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
 
 impl<InValue, OutValue> Window<InValue, OutValue> {
     pub fn new() -> Window<InValue, OutValue> {
-        todo!()
+        Self {
+            _v: PhantomData,
+            _out_v: PhantomData,
+        }
+    }
+}
+
+impl<InValue, OutValue> Default for Window<InValue, OutValue> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

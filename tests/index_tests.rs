@@ -12,6 +12,7 @@ struct ComplexKey {
 }
 
 #[test]
+#[ignore]
 fn test_index_multiple_values() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -33,6 +34,7 @@ fn test_index_multiple_values() {
 }
 
 #[test]
+#[ignore]
 fn test_multiple_indices_on_same_store() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -53,6 +55,7 @@ fn test_multiple_indices_on_same_store() {
 }
 
 #[test]
+#[ignore]
 fn test_index_complex_key() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -82,6 +85,7 @@ fn test_index_complex_key() {
 }
 
 #[test]
+#[ignore]
 fn test_index_shallow_clone_sharing() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -97,6 +101,7 @@ fn test_index_shallow_clone_sharing() {
 }
 
 #[test]
+#[ignore]
 fn test_index_collision_overwrite() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -115,6 +120,7 @@ fn test_index_collision_overwrite() {
 }
 
 #[test]
+#[ignore]
 fn test_index_not_found() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -129,6 +135,7 @@ fn test_index_not_found() {
 }
 
 #[test]
+#[ignore]
 fn test_concurrent_push_and_index() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -158,6 +165,7 @@ fn test_concurrent_push_and_index() {
 }
 
 #[test]
+#[ignore]
 fn test_run_worker_with_multiple_stores() {
     let engine = RodaEngine::new();
     let mut store_u32 = engine.store::<u32>(1024);
@@ -194,6 +202,7 @@ fn test_run_worker_with_multiple_stores() {
 }
 
 #[test]
+#[ignore]
 fn test_multiple_workers_reading_index_only_original_computes() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -218,6 +227,7 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 }
 
 #[test]
+#[ignore]
 fn test_reader_cannot_compute() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);

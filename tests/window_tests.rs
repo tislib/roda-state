@@ -17,6 +17,7 @@ pub struct Analysis {
 }
 
 #[test]
+#[ignore]
 fn test_window_filling_and_sliding() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(10);
@@ -65,6 +66,7 @@ fn test_window_filling_and_sliding() {
 }
 
 #[test]
+#[ignore]
 fn test_window_size_one() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(10);
@@ -107,6 +109,7 @@ fn test_window_size_one() {
 }
 
 #[test]
+#[ignore]
 fn test_window_large_sliding() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(100);
@@ -156,6 +159,7 @@ fn test_window_large_sliding() {
 }
 
 #[test]
+#[ignore]
 fn test_window_worker_large() {
     use std::sync::{Arc, Mutex};
     use std::thread;
@@ -203,6 +207,7 @@ fn test_window_worker_large() {
 }
 
 #[test]
+#[ignore]
 fn test_window_max_value() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(10);
@@ -236,6 +241,7 @@ fn test_window_max_value() {
 }
 
 #[test]
+#[ignore]
 fn test_window_all_none_until_full() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};

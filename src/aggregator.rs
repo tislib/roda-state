@@ -28,7 +28,19 @@ impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, Pa
 
 impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
     pub fn new() -> Aggregator<InValue, OutValue, PartitionKey> {
-        todo!()
+        Self {
+            _v: PhantomData,
+            _out_v: PhantomData,
+            _partition_key: PhantomData,
+        }
+    }
+}
+
+impl<InValue: Pod, OutValue: Pod, PartitionKey> Default
+    for Aggregator<InValue, OutValue, PartitionKey>
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 

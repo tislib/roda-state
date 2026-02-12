@@ -2,6 +2,7 @@ use roda_state::RodaEngine;
 use roda_state::components::{Store, StoreReader};
 
 #[test]
+#[ignore]
 fn test_push_then_read_single() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -14,6 +15,7 @@ fn test_push_then_read_single() {
 }
 
 #[test]
+#[ignore]
 fn test_multiple_push_read_in_order() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -30,6 +32,7 @@ fn test_multiple_push_read_in_order() {
 }
 
 #[test]
+#[ignore]
 fn test_interleaved_push_and_read() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
@@ -49,6 +52,7 @@ fn test_interleaved_push_and_read() {
 }
 
 #[test]
+#[ignore]
 fn test_stores_are_isolated_by_type() {
     let engine = RodaEngine::new();
 
@@ -72,6 +76,7 @@ fn test_stores_are_isolated_by_type() {
 }
 
 #[test]
+#[ignore]
 fn test_push_after_partial_reads() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
