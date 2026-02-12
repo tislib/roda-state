@@ -1,6 +1,6 @@
-use roda_state::{RodaEngine, Window};
 use bytemuck::{Pod, Zeroable};
 use roda_state::components::{Store, StoreReader};
+use roda_state::{RodaEngine, Window};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]
@@ -36,7 +36,8 @@ fn test_window_filling_and_sliding() {
                     return None;
                 }
                 let sum: f64 = window.iter().map(|d| d.value).sum();
-                let increasing = window[2].value > window[1].value && window[1].value > window[0].value;
+                let increasing =
+                    window[2].value > window[1].value && window[1].value > window[0].value;
                 Some(Analysis {
                     average: sum / 3.0,
                     is_increasing: if increasing { 1 } else { 0 },
@@ -47,7 +48,10 @@ fn test_window_filling_and_sliding() {
 
     // Push data points
     for i in 1..=5 {
-        source.push(DataPoint { value: i as f64, ..Default::default() });
+        source.push(DataPoint {
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     // Validate by get_window all outputs (5 - 3 + 1 = 3)
@@ -87,7 +91,10 @@ fn test_window_size_one() {
 
     // Push values
     for v in [10.0, 20.0, 30.0] {
-        source.push(DataPoint { value: v, ..Default::default() });
+        source.push(DataPoint {
+            value: v,
+            ..Default::default()
+        });
     }
 
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -121,7 +128,11 @@ fn test_window_large_sliding() {
                 let sum: f64 = window.iter().map(|d| d.value).sum();
                 Some(Analysis {
                     average: sum / 10.0,
-                    is_increasing: if window[9].value > window[0].value { 1 } else { 0 },
+                    is_increasing: if window[9].value > window[0].value {
+                        1
+                    } else {
+                        0
+                    },
                     ..Default::default()
                 })
             });
@@ -129,7 +140,10 @@ fn test_window_large_sliding() {
 
     // Push values 0..11 -> expect 3 outputs
     for i in 0..12 {
-        source.push(DataPoint { value: i as f64, ..Default::default() });
+        source.push(DataPoint {
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -144,8 +158,8 @@ fn test_window_large_sliding() {
 #[test]
 fn test_window_worker_large() {
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
     use std::thread;
+    use std::time::Duration;
 
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(2000);
@@ -166,14 +180,21 @@ fn test_window_worker_large() {
                 let sum: f64 = window.iter().map(|d| d.value).sum();
                 Some(Analysis {
                     average: sum / 10.0,
-                    is_increasing: if window[window.len()-1].value > window[0].value { 1 } else { 0 },
+                    is_increasing: if window[window.len() - 1].value > window[0].value {
+                        1
+                    } else {
+                        0
+                    },
                     ..Default::default()
                 })
             });
     });
 
     for i in 0..1000 {
-        source.push(DataPoint { value: i as f64, ..Default::default() });
+        source.push(DataPoint {
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     let res = target_reader.get_window::<991>(0).unwrap();
@@ -202,7 +223,10 @@ fn test_window_max_value() {
 
     // Push values: expect maxima per 3-sized window
     for v in [1.0, 3.0, 2.0, 5.0, 4.0] {
-        source.push(DataPoint { value: v, ..Default::default() });
+        source.push(DataPoint {
+            value: v,
+            ..Default::default()
+        });
     }
 
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -232,16 +256,15 @@ fn test_window_all_none_until_full() {
             .to(&mut target)
             .reduce(5, |window: &[DataPoint]| {
                 cc.fetch_add(1, Ordering::Relaxed);
-                if window.len() == 5 {
-                    Some(1u8)
-                } else {
-                    None
-                }
+                if window.len() == 5 { Some(1u8) } else { None }
             });
     });
 
     for i in 0..5 {
-        source.push(DataPoint { value: i as f64, ..Default::default() });
+        source.push(DataPoint {
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     let res = target_reader.get_window::<1>(0).unwrap();

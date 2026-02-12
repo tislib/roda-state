@@ -1,6 +1,6 @@
-use roda_state::{Aggregator, RodaEngine};
 use bytemuck::{Pod, Zeroable};
 use roda_state::components::{Store, StoreReader};
+use roda_state::{Aggregator, RodaEngine};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]
@@ -52,8 +52,16 @@ fn test_aggregator_count_and_sum() {
     });
 
     // Push readings
-    source.push(SensorReading { sensor_id: 1, value: 10.0, ..Default::default() });
-    source.push(SensorReading { sensor_id: 1, value: 20.0, ..Default::default() });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 10.0,
+        ..Default::default()
+    });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 20.0,
+        ..Default::default()
+    });
 
     // Validate the final aggregated result by get_window from the target
     let res = target_reader.get_window::<2>(0).unwrap();
@@ -92,9 +100,21 @@ fn test_aggregator_min_max_tracking() {
     });
 
     // Push readings
-    source.push(SensorReading { sensor_id: 1, value: 10.0, ..Default::default() });
-    source.push(SensorReading { sensor_id: 1, value: 20.0, ..Default::default() });
-    source.push(SensorReading { sensor_id: 1, value: 5.0, ..Default::default() });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 10.0,
+        ..Default::default()
+    });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 20.0,
+        ..Default::default()
+    });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 5.0,
+        ..Default::default()
+    });
 
     // Validate by get_window from the target
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -126,9 +146,21 @@ fn test_aggregator_multiple_partitions() {
     });
 
     // Push readings across partitions
-    source.push(SensorReading { sensor_id: 1, value: 1.0, ..Default::default() });
-    source.push(SensorReading { sensor_id: 2, value: 2.0, ..Default::default() });
-    source.push(SensorReading { sensor_id: 1, value: 3.0, ..Default::default() });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 1.0,
+        ..Default::default()
+    });
+    source.push(SensorReading {
+        sensor_id: 2,
+        value: 2.0,
+        ..Default::default()
+    });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 3.0,
+        ..Default::default()
+    });
 
     // Validate by get_window all results
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -166,7 +198,11 @@ fn test_aggregator_complex_key() {
             });
     });
 
-    source.push(SensorReading { sensor_id: 1, value: 15.0, ..Default::default() });
+    source.push(SensorReading {
+        sensor_id: 1,
+        value: 15.0,
+        ..Default::default()
+    });
 
     let res = target_reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0].sensor_id, 1);
@@ -198,11 +234,19 @@ fn test_aggregator_reset_behavior() {
 
     // Push several readings for sensor 1
     for i in 0..5 {
-        source.push(SensorReading { sensor_id: 1, value: i as f64, ..Default::default() });
+        source.push(SensorReading {
+            sensor_id: 1,
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     // Switch to sensor 2
-    source.push(SensorReading { sensor_id: 2, value: 100.0, ..Default::default() });
+    source.push(SensorReading {
+        sensor_id: 2,
+        value: 100.0,
+        ..Default::default()
+    });
 
     // Validate get_window results: first 5 for sensor 1 with counts 1..5, then sensor 2 with count 1
     let res = target_reader.get_window::<6>(0).unwrap();
@@ -237,7 +281,11 @@ fn test_aggregator_large_index() {
 
     // Simulate 1000 items in one partition
     for i in 0..1000 {
-        source.push(SensorReading { sensor_id: 1, value: i as f64, ..Default::default() });
+        source.push(SensorReading {
+            sensor_id: 1,
+            value: i as f64,
+            ..Default::default()
+        });
     }
 
     // Validate all results
@@ -250,17 +298,17 @@ fn test_aggregator_large_index() {
 #[test]
 fn test_aggregator_worker_large() {
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
     use std::thread;
+    use std::time::Duration;
 
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(2000);
     let mut target = engine.store::<SensorStats>(2000);
     let source_reader = source.reader();
     let target_reader = target.reader();
-    
+
     let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
-    
+
     engine.run_worker(move || {
         source_reader.next();
         aggregator
@@ -273,11 +321,15 @@ fn test_aggregator_worker_large() {
                 stats.sum += reading.value;
             });
     });
-    
+
     for _ in 0..1000 {
-        source.push(SensorReading { sensor_id: 1, value: 1.0, ..Default::default() });
+        source.push(SensorReading {
+            sensor_id: 1,
+            value: 1.0,
+            ..Default::default()
+        });
     }
-    
+
     let res = target_reader.get_window::<1000>(0).unwrap();
     assert_eq!(res[999].count, 1000);
     assert_eq!(res[999].sum, 1000.0);

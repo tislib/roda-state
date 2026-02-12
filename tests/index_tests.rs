@@ -1,8 +1,8 @@
-use roda_state::components::{Index, IndexReader, Store};
+use bytemuck::{Pod, Zeroable};
 use roda_state::RodaEngine;
+use roda_state::components::{Index, IndexReader, Store};
 use std::thread;
 use std::time::Duration;
-use bytemuck::{Pod, Zeroable};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Pod, Zeroable)]
@@ -36,7 +36,7 @@ fn test_index_multiple_values() {
 fn test_multiple_indices_on_same_store() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(1024);
-    
+
     let index_double = store.direct_index::<u32>();
     let index_triple = store.direct_index::<u32>();
 
@@ -59,11 +59,26 @@ fn test_index_complex_key() {
     let index = store.direct_index::<ComplexKey>();
 
     store.push(100);
-    index.compute(|&val| ComplexKey { id: val, category: 1 });
+    index.compute(|&val| ComplexKey {
+        id: val,
+        category: 1,
+    });
 
     let reader = index.reader();
-    assert_eq!(reader.get(&ComplexKey { id: 100, category: 1 }), Some(100));
-    assert_eq!(reader.get(&ComplexKey { id: 100, category: 2 }), None);
+    assert_eq!(
+        reader.get(&ComplexKey {
+            id: 100,
+            category: 1
+        }),
+        Some(100)
+    );
+    assert_eq!(
+        reader.get(&ComplexKey {
+            id: 100,
+            category: 2
+        }),
+        None
+    );
 }
 
 #[test]
@@ -201,7 +216,6 @@ fn test_multiple_workers_reading_index_only_original_computes() {
     assert_eq!(reader1.get(&10), Some(1));
     assert_eq!(reader2.get(&20), Some(2));
 }
-
 
 #[test]
 fn test_reader_cannot_compute() {

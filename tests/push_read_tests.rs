@@ -1,5 +1,5 @@
-use roda_state::components::{Store, StoreReader};
 use roda_state::RodaEngine;
+use roda_state::components::{Store, StoreReader};
 
 #[test]
 fn test_push_then_read_single() {

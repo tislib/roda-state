@@ -9,7 +9,10 @@ pub struct Window<InValue, OutValue = ()> {
 }
 
 impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
-    pub fn from<Reader: StoreReader<InValue>>(&self, _reader: &Reader) -> Window<InValue, OutValue> {
+    pub fn from<Reader: StoreReader<InValue>>(
+        &self,
+        _reader: &Reader,
+    ) -> Window<InValue, OutValue> {
         todo!()
     }
 
