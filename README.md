@@ -27,10 +27,14 @@ HFT, market microstructure research, telemetry, and any workload where microseco
     - collect::<N>(): read N most recent values (fast path for testing and examples)
     - with(|state| ...): execute a closure with a borrowed reference
 - Aggregator<In, Out, Key = ()>: a partitioned reducer for turning event streams into rolling state.
+    - from(&reader): set the input source
+    - to(&mut store): set the output target
     - partition_by(|in| Key): assign each input to a partition
     - reduce(|idx, in, out| ...): merge an input into the current output for its partition; idx is 0‑based within the
       partition window
 - Window<In, Out>: a fixed‑size sliding window over the input store.
+    - from(&reader): set the input source
+    - to(&mut store): set the output target
     - reduce(window_size, |window: &[In]| -> Option<Out>): compute optional output when the window is advanced
 - DirectIndex<Key, Value>: build and query secondary indexes over a store for O(1) state lookups.
     - compute(|value| Key): manually update the index for the next available item in the store (typically called inside a worker)
@@ -69,18 +73,22 @@ Below is a trimmed version of examples/hello_world.rs that demonstrates a two‑
 candles, then derive a simple momentum signal via a sliding window.
 
 ```rust
+use bytemuck::{Pod, Zeroable};
+use roda_core::components::{RodaStore, RodaStoreReader};
 use roda_core::{Aggregator, RodaEngine, Window};
 
-#[derive(Clone, Copy, Default)]
+#[repr(C)]
+#[derive(Clone, Copy, Default, Pod, Zeroable)]
 struct Tick {
-    symbol: u16,
+    symbol: u64,
     price: f64,
     timestamp: u64
 }
 
-#[derive(Clone, Copy, Default)]
+#[repr(C)]
+#[derive(Clone, Copy, Default, Pod, Zeroable)]
 struct OHLC {
-    symbol: u16,
+    symbol: u64,
     open: f64,
     high: f64,
     low: f64,
@@ -88,17 +96,18 @@ struct OHLC {
     timestamp: u64
 }
 
-#[derive(Clone, Copy, Default)]
+#[repr(C)]
+#[derive(Clone, Copy, Default, Pod, Zeroable)]
 struct Signal {
-    symbol: u16,
+    symbol: u64,
     timestamp: u64,
-    direction: i8,
-    size: u16
+    direction: i32,
+    size: u32
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct TimeKey {
-    symbol: u16,
+    symbol: u64,
     timestamp: u64
 }
 
@@ -107,43 +116,58 @@ fn main() {
 
     // Allocate bounded stores (explicit memory profile)
     let tick_store = engine.store::<Tick>(1_000_000);
-    let ohlc_store = engine.store::<OHLC>(10_000);
-    let signal_store = engine.store::<Signal>(10_000);
+    let tick_reader = tick_store.reader();
+    let mut ohlc_store = engine.store::<OHLC>(10_000);
+    let ohlc_reader = ohlc_store.reader();
+    let mut signal_store = engine.store::<Signal>(10_000);
 
     // Index to locate candles by (symbol, time)
     let ohlc_index = ohlc_store.direct_index::<TimeKey>();
 
     // Declare pipelines
-    let mut ohlc = Aggregator::pipe(tick_store.reader(), ohlc_store);
-    let mut strategy = Window::pipe(ohlc_store.reader(), signal_store);
+    let mut ohlc_pipeline: Aggregator<Tick, OHLC, TimeKey> = Aggregator::new();
+    let mut strategy_pipeline: Window<OHLC, Signal> = Window::new();
 
     // Worker 1: aggregate ticks → OHLC and maintain index
     engine.run_worker(move || {
-        ohlc.partition_by(|t| TimeKey { symbol: t.symbol, timestamp: t.timestamp / 100_000 });
-        ohlc.reduce(|i, t, c| {
-            if i == 0 {
-                c.open = t.price;
-                c.high = t.price;
-                c.low = t.price;
-                c.close = t.price;
-                c.symbol = t.symbol;
-                c.timestamp = (t.timestamp / 100_000) * 100_000;
-            } else {
-                c.high = c.high.max(t.price);
-                c.low = c.low.min(t.price);
-                c.close = t.price;
-            }
-        });
+        tick_reader.next();
+        ohlc_pipeline
+            .from(&tick_reader)
+            .to(&mut ohlc_store)
+            .partition_by(|t| TimeKey { symbol: t.symbol, timestamp: t.timestamp / 100_000 })
+            .reduce(|i, t, c| {
+                if i == 0 {
+                    c.open = t.price;
+                    c.high = t.price;
+                    c.low = t.price;
+                    c.close = t.price;
+                    c.symbol = t.symbol;
+                    c.timestamp = (t.timestamp / 100_000) * 100_000;
+                } else {
+                    c.high = c.high.max(t.price);
+                    c.low = c.low.min(t.price);
+                    c.close = t.price;
+                }
+            });
         ohlc_index.compute(|c| TimeKey { symbol: c.symbol, timestamp: c.timestamp / 100_000 });
     });
 
     // Worker 2: 2‑bar momentum signal
     engine.run_worker(move || {
-        strategy.reduce(2, |w| {
-            let prev = w[0];
-            let cur = w[1];
-            (cur.close > prev.close).then(|| Signal { symbol: cur.symbol, timestamp: cur.timestamp, direction: 1, size: ((cur.close - prev.close) as u16).min(100) })
-        });
+        ohlc_reader.next();
+        strategy_pipeline
+            .from(&ohlc_reader)
+            .to(&mut signal_store)
+            .reduce(2, |w| {
+                let prev = w[0];
+                let cur = w[1];
+                (cur.close > prev.close).then(|| Signal { 
+                    symbol: cur.symbol, 
+                    timestamp: cur.timestamp, 
+                    direction: 1, 
+                    size: ((cur.close - prev.close) as u32).min(100) 
+                })
+            });
     });
 }
 ```

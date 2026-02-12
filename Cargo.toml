@@ -11,6 +11,7 @@ edition = "2024"
 spdlog-rs = "0.5.2"
 rand = "0.10.0-rc.6"
 roda-core = {path = "crates/roda-core"}
+bytemuck = {version = "1.25.0", features = ["derive"]}
 
 [dev-dependencies]
 assert_no_alloc = { version = "1.1.2" }

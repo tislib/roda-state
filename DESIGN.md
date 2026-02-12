@@ -2,58 +2,98 @@
 
 ## 1. Core Philosophy: "The Latency Is The Product"
 
-Roda is built for ultra-high-performance streaming applications—trading systems, real-time analytics, and telemetry—where deterministic performance is paramount. It adheres to **Mechanical Sympathy**, aligning software design with hardware realities.
+Roda is built for ultra-high-performance streaming applications—trading systems, real-time analytics, and
+telemetry—where deterministic performance is paramount. It adheres to **Mechanical Sympathy**, aligning software design
+with hardware realities.
 
-1.  **Deterministic Latency:** Every operation has a bounded execution time. We prefer O(1) algorithms over O(log n). No memory is allocated on the hot path.
-2.  **Predictable Cycles:** A "Unit of Work" is constant. Processing $N$ events scales linearly with $N$ in terms of CPU cycles.
-3.  **Explicit Control:** The developer defines the memory bounds and data flow. Roda provides the primitives (Stores, Indexes), but the developer orchestrates how they are processed.
-4.  **Zero-Copy by Default:** Data is not moved; ownership is not transferred. Readers get a **View** (borrowed reference) into shared memory regions.
-5.  **Lock-Free Concurrency:** No `Mutex`, `RwLock`, or condition variables on the data path. Synchronization is achieved via **Atomic Sequence Counters** (Acquire/Release semantics).
+1. **Deterministic Latency:** Every operation has a bounded execution time. We prefer O(1) algorithms over O(log n). No
+   memory is allocated on the hot path.
+2. **Predictable Cycles:** A "Unit of Work" is constant. Processing $N$ events scales linearly with $N$ in terms of CPU
+   cycles.
+3. **Explicit Control:** The developer defines the memory bounds and data flow. Roda provides the primitives (Stores,
+   Indexes), but the developer orchestrates how they are processed.
+4. **Zero-Copy by Default:** Data is not moved; ownership is not transferred. Readers get a **View** (borrowed
+   reference) into shared memory regions.
+5. **Lock-Free Concurrency:** No `Mutex`, `RwLock`, or condition variables on the data path. Synchronization is achieved
+   via **Atomic Sequence Counters** (Acquire/Release semantics).
 
 ---
 
 ## 2. System Architecture
 
-The system follows a **Shared-Nothing** architecture for logic (workers don't share state directly), but a **Shared-Memory** architecture for data.
+The system follows a **Shared-Nothing** architecture for logic (workers don't share state directly), but a *
+*Shared-Memory** architecture for data.
 
 ### 2.1 The Engine (Orchestrator)
+
 The `RodaEngine` is the "Bootloader" of the system. It is responsible for:
-*   Allocating large contiguous memory blocks via `mmap`.
-*   Initializing shared memory structures (headers, ring buffers).
-*   Spawning long-lived worker threads and optionally pinning them to CPU cores.
+
+* Allocating large contiguous memory blocks via `mmap`.
+* Initializing shared memory structures (headers, ring buffers).
+* Spawning long-lived worker threads and optionally pinning them to CPU cores.
+
+Each time you call run_worker, a new thread is spawned, and inside it in busy loop it processes data.
+
+While the worker is processing data, it continuously (in every Nth cycle) checks for data movements. If no data
+processed
+for specific cycles, The worker initially will start spinning, but after some time it will switch to a sleep mode.s
 
 ### 2.2 The Store (The Source of Truth)
-The `RodaStore<T>` is a fixed-capacity circular buffer backed by memory-mapped files.
-*   **Memory Layout:** `[ Header (Atomics) | Data Region (T...) | Padding ]`.
-*   **Write Model:** **Single Writer**. Only one thread (the owner of the `Store` handle) can write, eliminating write-side contention.
-*   **Read Model:** **Multiple Readers**. Each reader (or worker) uses an independent handle that maintains its own state (cursor).
-*   **Addressing:** Data is addressed by a monotonic `u64` sequence number (`Cursor`). The physical address is `(Cursor % Capacity) * sizeof(T)`.
 
-### 2.3 StoreReader
-A `StoreReader` is an independent handle that tracks its own `LocalCursor`. This allows multiple workers to consume data from the same `Store` independently.
+The `CircularRodaStore<T>` is a fixed-capacity circular buffer backed by memory-mapped files.
 
-*   **Synchronicity by Design:** Each worker is designed to process a single unit of work in each cycle with constant instructions. This ensures that readers naturally stay in sync with the writer.
-*   **No Explicit Lag Handling:** Lag is only possible if one worker is significantly faster than another, which is not handled by the current design as workers are expected to maintain a constant pace.
+* **Memory Layout:** `[ Header (Atomics) | Data Region (T...) | Padding ]`.
+* **Write Model:** **Single Writer**. Only one thread (the owner of the `Store` handle) can write, eliminating
+  write-side contention.
+* **Read Model:** **Multiple Readers**. Each reader (or worker) uses an independent `CircularRodaStoreReader<T>` handle
+  that maintains its own
+  state (cursor).
+* **Addressing:** Data is addressed by a monotonic `u64` sequence number (`Cursor`). The physical address is
+  `(Cursor % Capacity) * sizeof(T)`.
+
+### 2.3 StoreReader & Traits
+
+Roda uses traits to define the behavior of stores and readers, allowing for different implementations (like the default
+`CircularRodaStore`).
+
+* **RodaStore Trait:** Defines `push`, `reader`, and `direct_index`.
+* **RodaStoreReader Trait:** Defines `next`, `collect`, `with`, and `at`.
+* **Explicit Advancement:** Each `StoreReader` maintains its own `LocalCursor`.
+  The cursor is moved next everytime `next()` is called. So inside a worker for all used store readers `next()` function
+  must be
+  called.
+* **Synchronicity by Design:** Each worker is designed to process a single unit of work in each cycle. Explicit `next()`
+  calls give the developer control over when data is consumed relative to other operations (like indexing).
+  If there are no more data to read, the cursor will simply stay at the end of the store. No need to handle any special
+  case.
 
 ---
 
 ### 3. The Index (O(1) Access)
 
 The `DirectIndex` is a derivative structure that maps a `Key` to a `Cursor` in a `Store`.
-*   **Storage:** Also backed by `mmap`.
-*   **Manual Update:** The index is **not** automatically updated when the store is written. The developer must explicitly call the `compute` method (typically inside a worker) to index new data.
-*   **Consistency:** The developer controls when the index is updated relative to other operations.
-*   **Safety:** A reader might see data before it is indexed, but will never see an index entry pointing to invalid or uninitialized data.
+
+* **Storage:** Also backed by `mmap`.
+* **Manual Update:** The index is **not** automatically updated when the store is written. The developer must explicitly
+  call the `compute` method (typically inside a worker) to index new data.
+* **Consistency:** The developer controls when the index is updated relative to other operations.
+* **Safety:** A reader might see data before it is indexed, but will never see an index entry pointing to invalid or
+  uninitialized data.
 
 ---
 
 ## 4. Pipeline Primitives
 
-Roda enables **Declarative Pipelines** by chaining these primitives:
+Roda enables **Declarative Pipelines** by chaining these primitives using a builder pattern:
 
-*   **Aggregator:** Maps `Input -> Key -> Output`. Used for partitioned reduction (e.g., Ticks to Candles). State is sharded by Key.
-*   **Window:** Maps `Input -> Slice<Input>`. Provides a zero-copy "Lookback" mechanism (e.g., Moving Averages over the last $N$ elements).
-*   **Join:** Aligns two independent streams by a common attribute (e.g., Timestamp).
+* **Aggregator:** Maps `Input -> Key -> Output`. Used for partitioned reduction (e.g., Ticks to Candles). State is
+  sharded by Key.
+    * Pattern: `Aggregator::new().from(&reader).to(&mut store).partition_by(...).reduce(...)`
+* **Window:** Maps `Input -> Slice<Input> -> Option<Output>`. Provides a zero-copy "Lookback" mechanism (e.g., Moving
+  Averages over the
+  last $N$ elements).
+    * Pattern: `Window::new().from(&reader).to(&mut store).reduce(size, ...)`
+* **Join:** Aligns two independent streams by a common attribute (e.g., Timestamp).
 
 ---
 
@@ -61,9 +101,11 @@ Roda enables **Declarative Pipelines** by chaining these primitives:
 
 To guarantee performance and zero-copy safety, Roda imposes several constraints:
 
-*   **Fixed-Size POD Types:** `T` must be `Copy`, `Sized`, and satisfy `bytemuck` traits. No `String`, `Vec`, or pointers allowed inside a `Store`.
-*   **Memory Pinning:** Uses `mlock` (via `libc`) to prevent shared memory from being swapped to disk.
-*   **Alignment:** All structures use `#[repr(C)]` and are aligned to machine word boundaries to support zero-copy casting and avoid torn reads.
+* **Fixed-Size POD Types:** `T` must be `Copy`, `Sized`, and satisfy `bytemuck` traits. No `String`, `Vec`, or pointers
+  allowed inside a `Store`.
+* **Memory Pinning:** Uses `mlock` (via `libc`) to prevent shared memory from being swapped to disk.
+* **Alignment:** All structures use `#[repr(C)]` and are aligned to machine word boundaries to support zero-copy casting
+  and avoid torn reads.
 
 ---
 
@@ -71,7 +113,7 @@ To guarantee performance and zero-copy safety, Roda imposes several constraints:
 
 Synchronization is achieved without locks using `Acquire/Release` semantics:
 
-*   **Writer:** `buffer[cursor % cap] = data; cursor.store(new_val, Release);`
-*   **Reader:** `while cursor.load(Acquire) > local_cursor { process(); local_cursor++; }`
+* **Writer:** `buffer[cursor % cap] = data; cursor.store(new_val, Release);`
+* **Reader:** `while cursor.load(Acquire) > local_cursor { process(); local_cursor++; }`
 
 This ensures that when the reader sees the updated cursor, it is guaranteed to see the data written by the writer.

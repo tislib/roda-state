@@ -706,6 +706,7 @@ name = "roda"
 version = "0.1.0"
 dependencies = [
  "assert_no_alloc",
+ "bytemuck",
  "rand",
  "roda-core",
  "spdlog-rs",

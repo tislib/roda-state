@@ -1,3 +1,8 @@
+pub mod components;
+mod store;
+
+use crate::components::{RodaStore, RodaStoreReader};
+use bytemuck::Pod;
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::thread;
@@ -28,34 +33,68 @@ impl<Key, Value> RodaDirectIndex<Key, Value> {
     }
 }
 
-pub struct RodaStore<State> {
+pub struct CircularRodaStore<State: Pod> {
     _p: PhantomData<State>,
 }
 
-impl<State> RodaStore<State> {
-    pub fn reader(&self) -> RodaStore<State> {
+pub struct CircularRodaStoreReader<State: Pod> {
+    _p: PhantomData<State>,
+}
+
+// impl<State> RodaStore<State> {
+//     pub fn reader(&self) -> RodaStore<State> {
+//         todo!()
+//     }
+//
+//     pub fn collect<const N: usize>(&self) -> [&State; N] {
+//         todo!()
+//     }
+// }
+//
+// impl<State> RodaStore<State> {
+//     pub fn direct_index<Key>(&self) -> RodaDirectIndex<Key, State> {
+//         todo!()
+//     }
+//     pub fn push(&self, value: State) -> Result<(), RodaError> {
+//         todo!()
+//     }
+//
+//     pub fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> R {
+//         todo!()
+//     }
+// }
+
+impl<State: Pod> RodaStore<State, CircularRodaStoreReader<State>> for CircularRodaStore<State> {
+    fn push(&mut self, state: State) {
         todo!()
     }
 
-    pub fn collect<const N: usize>(&self) -> [&State; N] {
+    fn reader(&self) -> CircularRodaStoreReader<State> {
+        todo!()
+    }
+
+    fn direct_index<Key>(&self) -> RodaDirectIndex<Key, State> {
         todo!()
     }
 }
 
-impl<State> RodaStore<State> {
-    pub fn direct_index<Key>(&self) -> RodaDirectIndex<Key, State> {
-        todo!()
-    }
-    pub fn push(&self, value: State) -> Result<(), RodaError> {
+impl<State: Pod> RodaStoreReader<State> for CircularRodaStoreReader<State> {
+    fn collect<const N: usize>(&self) -> [&State; N] {
         todo!()
     }
 
-    pub fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> R {
+    fn next(&self) -> bool {
+        todo!()
+    }
+
+    fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
+        todo!()
+    }
+
+    fn at<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
         todo!()
     }
 }
-
-impl<State> RodaStore<State> {}
 
 pub struct RodaEngine {}
 
@@ -68,7 +107,7 @@ impl RodaEngine {
 }
 
 impl RodaEngine {
-    pub fn store<State>(&self, size: u32) -> RodaStore<State> {
+    pub fn store<State: Pod>(&self, size: u32) -> CircularRodaStore<State> {
         todo!()
     }
 }
@@ -79,14 +118,38 @@ impl RodaEngine {
     }
 }
 
-pub struct Aggregator<InValue, OutValue, PartitionKey = ()> {
+pub struct Aggregator<InValue: Pod, OutValue: Pod, PartitionKey = ()> {
     _v: PhantomData<InValue>,
     _out_v: PhantomData<OutValue>,
     _partition_key: PhantomData<PartitionKey>,
 }
 
-impl<InValue, OutValue, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
-    pub fn pipe(source: RodaStore<InValue>, target: RodaStore<OutValue>) -> Self {
+impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+    pub fn to(
+        &self,
+        p0: &mut CircularRodaStore<OutValue>,
+    ) -> Aggregator<InValue, OutValue, PartitionKey> {
+        todo!()
+    }
+}
+
+impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+    pub fn from(
+        &self,
+        p0: &CircularRodaStoreReader<InValue>,
+    ) -> Aggregator<InValue, OutValue, PartitionKey> {
+        todo!()
+    }
+}
+
+impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+    pub fn new() -> Aggregator<InValue, OutValue, PartitionKey> {
+        todo!()
+    }
+}
+
+impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+    pub fn pipe(source: CircularRodaStore<InValue>, target: CircularRodaStore<OutValue>) -> Self {
         Self {
             _v: Default::default(),
             _out_v: Default::default(),
@@ -94,7 +157,12 @@ impl<InValue, OutValue, PartitionKey> Aggregator<InValue, OutValue, PartitionKey
         }
     }
 
-    pub fn partition_by(&mut self, key_fn: impl FnOnce(&InValue) -> PartitionKey) {}
+    pub fn partition_by(
+        &mut self,
+        key_fn: impl FnOnce(&InValue) -> PartitionKey,
+    ) -> Aggregator<InValue, OutValue, PartitionKey> {
+        todo!()
+    }
 
     pub fn reduce(&mut self, update_fn: impl FnOnce(u64, &InValue, &mut OutValue)) {}
 }
@@ -104,8 +172,33 @@ pub struct Window<InValue, OutValue = ()> {
     _out_v: PhantomData<OutValue>,
 }
 
+impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
+    pub fn from<Reader: RodaStoreReader<InValue>>(
+        &self,
+        reader: &Reader,
+    ) -> Window<InValue, OutValue> {
+        todo!()
+    }
+
+    pub fn to<Reader: RodaStoreReader<OutValue>, Store: RodaStore<OutValue, Reader>>(
+        &self,
+        store: &mut Store,
+    ) -> Window<InValue, OutValue> {
+        todo!()
+    }
+}
+
 impl<InValue, OutValue> Window<InValue, OutValue> {
-    pub fn pipe(source: RodaStore<InValue>, target: RodaStore<OutValue>) -> Self {
+    pub fn new() -> Window<InValue, OutValue> {
+        todo!()
+    }
+}
+
+impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
+    pub fn pipe(
+        source: impl RodaStoreReader<InValue>,
+        target: CircularRodaStore<OutValue>,
+    ) -> Self {
         Self {
             _v: Default::default(),
             _out_v: Default::default(),
