@@ -1,29 +1,29 @@
 use crate::components::{Store, StoreOptions, StoreReader};
 use crate::index::DirectIndex;
-use crate::storage::mmap_journal::MmapJournal;
+use crate::storage::mmap_journal::MmapRing;
 use bytemuck::Pod;
 use std::cell::Cell;
 use std::path::PathBuf;
 
 pub struct CircularStore {
-    storage: MmapJournal,
+    storage: MmapRing,
 }
 
 pub struct CircularStoreReader {
     next_index: Cell<usize>,
-    storage: MmapJournal,
+    storage: MmapRing,
 }
 
 impl CircularStore {
     pub fn new(root_path: &'static str, option: StoreOptions) -> Self {
         let storage = if option.in_memory {
-            MmapJournal::new(None, option.size).unwrap()
+            MmapRing::new(None, option.size).unwrap()
         } else {
             let path: PathBuf = format!("{}/{}.store", root_path, option.name).into();
             if path.exists() {
-                MmapJournal::load(path).unwrap()
+                MmapRing::load(path).unwrap()
             } else {
-                MmapJournal::new(Some(path), option.size).unwrap()
+                MmapRing::new(Some(path), option.size).unwrap()
             }
         };
 
@@ -35,6 +35,7 @@ impl<State: Pod + Send> Store<State> for CircularStore {
     type Reader = CircularStoreReader;
 
     fn push(&mut self, state: State) {
+        assert!(self.storage.len() >= size_of::<State>(), "Store size {} is too small for State size {}", self.storage.len(), size_of::<State>());
         self.storage.append(&state);
     }
 
@@ -57,10 +58,20 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
     fn next(&self) -> bool {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();
-        if offset + size_of::<State>() > self.storage.get_write_index() {
+        let write_index = self.storage.get_write_index();
+        
+        if offset + size_of::<State>() > write_index {
             return false;
         }
-        self.next_index.set(index_to_read + 1);
+
+        let min_offset = write_index.saturating_sub(self.storage.len());
+        if offset < min_offset {
+            // Lapped: skip to the oldest available data
+            let new_index = min_offset / size_of::<State>();
+            self.next_index.set(new_index + 1);
+        } else {
+            self.next_index.set(index_to_read + 1);
+        }
 
         true
     }
@@ -77,8 +88,12 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
 
     fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
         let offset = at * size_of::<State>();
-        if offset + size_of::<State>() > self.storage.get_write_index() {
+        let write_index = self.storage.get_write_index();
+        if offset + size_of::<State>() > write_index {
             return None;
+        }
+        if offset < write_index.saturating_sub(self.storage.len()) {
+            return None; // Data has been overwritten
         }
         Some(handler(self.storage.read(offset)))
     }
@@ -106,8 +121,12 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
 
     fn get_window<const N: usize>(&self, at: usize) -> Option<[State; N]> {
         let offset = at * size_of::<State>();
-        if offset + size_of::<State>() * N > self.storage.get_write_index() {
+        let write_index = self.storage.get_write_index();
+        if offset + size_of::<State>() * N > write_index {
             return None;
+        }
+        if offset < write_index.saturating_sub(self.storage.len()) {
+            return None; // Part of the window has been overwritten
         }
 
         let mut window = Vec::with_capacity(N);

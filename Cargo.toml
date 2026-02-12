@@ -21,6 +21,10 @@ criterion = "0.8.2"
 [lib]
 bench = false # We use the 'benches/' directory
 
+[[bench]]
+name = "store_bench"
+harness = false
+
 [profile.profiling]
 inherits = "release"
 debug = true
