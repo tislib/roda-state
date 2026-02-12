@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Index, Store, StoreReader};
+use roda_state::components::{Engine, Index, Store, StoreOptions, StoreReader};
 use roda_state::{Aggregator, RodaEngine, Window};
 use std::cmp::min;
 // ==============================================================================
@@ -49,18 +49,30 @@ fn main() {
     let engine = RodaEngine::new();
 
     // A. RESOURCES
-    let tick_store = engine.store::<Tick>(1_000_000);
+    let tick_store = engine.store::<Tick>(StoreOptions {
+        name: "ticks",
+        size: 1_000_000,
+        in_memory: true,
+    });
     let tick_reader = tick_store.reader();
-    let mut ohlc_store = engine.store::<OHLC>(10_000);
+    let mut ohlc_store = engine.store::<OHLC>(StoreOptions {
+        name: "ohlc",
+        size: 10_000,
+        in_memory: true,
+    });
     let ohlc_reader = ohlc_store.reader();
-    let mut simple_strategy = engine.store::<Signal>(10_000);
+    let mut simple_strategy = engine.store::<Signal>(StoreOptions {
+        name: "simple_strategy",
+        size: 10_000,
+        in_memory: true,
+    });
 
     // The Index tracks where specific candles live in the ring buffer
     let ohlc_index = ohlc_store.direct_index::<TimeKey>();
 
     // B. PIPELINE
-    let mut ohlc_pipeline: Aggregator<Tick, OHLC, TimeKey> = Aggregator::new();
-    let mut simple_strategy_pipeline: Window<OHLC, Signal> = Window::new();
+    let ohlc_pipeline: Aggregator<Tick, OHLC, TimeKey> = Aggregator::new();
+    let simple_strategy_pipeline: Window<OHLC, Signal> = Window::new();
 
     // C. WORKER
     engine.run_worker(move || {

@@ -16,10 +16,14 @@ libc = "0.2" # Needed for mlock (memory pinning) and sched_setaffinity
 
 [dev-dependencies]
 assert_no_alloc = { version = "1.1.2" }
-criterion = "0.8.2"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [lib]
 bench = false # We use the 'benches/' directory
+
+[[bench]]
+name = "store_bench"
+harness = false
 
 [profile.profiling]
 inherits = "release"

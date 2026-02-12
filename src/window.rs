@@ -1,5 +1,4 @@
 use crate::components::{Store, StoreReader};
-use crate::store::CircularRodaStore;
 use bytemuck::Pod;
 use std::marker::PhantomData;
 
@@ -8,7 +7,7 @@ pub struct Window<InValue, OutValue = ()> {
     pub(crate) _out_v: PhantomData<OutValue>,
 }
 
-impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
+impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
     pub fn from<Reader: StoreReader<InValue>>(
         &self,
         _reader: &Reader,
@@ -36,8 +35,8 @@ impl<InValue, OutValue> Default for Window<InValue, OutValue> {
     }
 }
 
-impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
-    pub fn pipe(source: impl StoreReader<InValue>, target: CircularRodaStore<OutValue>) -> Self {
+impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
+    pub fn pipe(source: impl StoreReader<InValue>, target: impl Store<OutValue>) -> Self {
         let _ = source;
         let _ = target;
         Self {
