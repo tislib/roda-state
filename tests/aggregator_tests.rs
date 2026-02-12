@@ -1,6 +1,6 @@
 use roda_state::{Aggregator, RodaEngine};
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::components::{Store, StoreReader};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]
@@ -55,8 +55,8 @@ fn test_aggregator_count_and_sum() {
     source.push(SensorReading { sensor_id: 1, value: 10.0, ..Default::default() });
     source.push(SensorReading { sensor_id: 1, value: 20.0, ..Default::default() });
 
-    // Validate the final aggregated result by collecting from the target
-    let res = target_reader.collect::<2>();
+    // Validate the final aggregated result by get_window from the target
+    let res = target_reader.get_window::<2>(0).unwrap();
     assert_eq!(res[1].sensor_id, 1);
     assert_eq!(res[1].count, 2);
     assert_eq!(res[1].sum, 30.0);
@@ -96,8 +96,8 @@ fn test_aggregator_min_max_tracking() {
     source.push(SensorReading { sensor_id: 1, value: 20.0, ..Default::default() });
     source.push(SensorReading { sensor_id: 1, value: 5.0, ..Default::default() });
 
-    // Validate by collecting from the target
-    let res = target_reader.collect::<3>();
+    // Validate by get_window from the target
+    let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[2].min, 5.0);
     assert_eq!(res[2].max, 20.0);
 }
@@ -130,8 +130,8 @@ fn test_aggregator_multiple_partitions() {
     source.push(SensorReading { sensor_id: 2, value: 2.0, ..Default::default() });
     source.push(SensorReading { sensor_id: 1, value: 3.0, ..Default::default() });
 
-    // Validate by collecting all results
-    let res = target_reader.collect::<3>();
+    // Validate by get_window all results
+    let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].sensor_id, 1);
     assert_eq!(res[0].count, 1);
     assert_eq!(res[1].sensor_id, 2);
@@ -168,7 +168,7 @@ fn test_aggregator_complex_key() {
 
     source.push(SensorReading { sensor_id: 1, value: 15.0, ..Default::default() });
 
-    let res = target_reader.collect::<1>();
+    let res = target_reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0].sensor_id, 1);
     assert_eq!(res[0].count, 1);
 }
@@ -204,8 +204,8 @@ fn test_aggregator_reset_behavior() {
     // Switch to sensor 2
     source.push(SensorReading { sensor_id: 2, value: 100.0, ..Default::default() });
 
-    // Validate collected results: first 5 for sensor 1 with counts 1..5, then sensor 2 with count 1
-    let res = target_reader.collect::<6>();
+    // Validate get_window results: first 5 for sensor 1 with counts 1..5, then sensor 2 with count 1
+    let res = target_reader.get_window::<6>(0).unwrap();
     for i in 0..5 {
         assert_eq!(res[i].sensor_id, 1);
         assert_eq!(res[i].count, (i as u32) + 1);
@@ -241,7 +241,7 @@ fn test_aggregator_large_index() {
     }
 
     // Validate all results
-    let res = target_reader.collect::<1000>();
+    let res = target_reader.get_window::<1000>(0).unwrap();
     for i in 0..1000usize {
         assert_eq!(res[i].count, (i as u32) + 1);
     }
@@ -278,7 +278,7 @@ fn test_aggregator_worker_large() {
         source.push(SensorReading { sensor_id: 1, value: 1.0, ..Default::default() });
     }
     
-    let res = target_reader.collect::<1000>();
+    let res = target_reader.get_window::<1000>(0).unwrap();
     assert_eq!(res[999].count, 1000);
     assert_eq!(res[999].sum, 1000.0);
 }

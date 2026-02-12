@@ -1,7 +1,7 @@
 pub mod components;
 mod store;
 
-use crate::components::{RodaIndex, RodaIndexReader, RodaStore, RodaStoreReader};
+use crate::components::{Index, IndexReader, Store, StoreReader};
 use bytemuck::Pod;
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
@@ -10,7 +10,7 @@ use std::thread;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RodaError {}
 
-pub struct RodaDirectIndex<Key: Pod, Value: Pod> {
+pub struct DirectIndex<Key: Pod, Value: Pod> {
     _k: PhantomData<Key>,
     _v: PhantomData<Value>,
 }
@@ -20,9 +20,8 @@ pub struct RodaDirectIndexReader<Key: Pod, Value: Pod> {
     _v: PhantomData<Value>,
 }
 
-impl<Key: Pod, Value: Pod> RodaIndex<Key, Value, RodaDirectIndexReader<Key, Value>>
-    for RodaDirectIndex<Key, Value>
-{
+impl<Key: Pod, Value: Pod> Index<Key, Value> for DirectIndex<Key, Value> {
+    type Reader = RodaDirectIndexReader<Key, Value>;
     fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
         todo!()
     }
@@ -32,12 +31,12 @@ impl<Key: Pod, Value: Pod> RodaIndex<Key, Value, RodaDirectIndexReader<Key, Valu
     }
 }
 
-impl<Key: Pod, Value: Pod> RodaIndexReader<Key, Value> for RodaDirectIndexReader<Key, Value> {
+impl<Key: Pod, Value: Pod> IndexReader<Key, Value> for RodaDirectIndexReader<Key, Value> {
     fn with<R>(&self, key: &Key, handler: impl FnOnce(&Value) -> R) -> Option<R> {
         todo!()
     }
 
-    fn get(&self, key: &Key) -> Option<&Value> {
+    fn get(&self, key: &Key) -> Option<Value> {
         todo!()
     }
 }
@@ -55,7 +54,7 @@ pub struct CircularRodaStoreReader<State: Pod> {
 //         todo!()
 //     }
 //
-//     pub fn collect<const N: usize>(&self) -> [&State; N] {
+//     pub fn get_last_n<const N: usize>(&self) -> [State; N] {
 //         todo!()
 //     }
 // }
@@ -73,7 +72,9 @@ pub struct CircularRodaStoreReader<State: Pod> {
 //     }
 // }
 
-impl<State: Pod> RodaStore<State, CircularRodaStoreReader<State>> for CircularRodaStore<State> {
+impl<State: Pod> Store<State> for CircularRodaStore<State> {
+    type Reader = CircularRodaStoreReader<State>;
+
     fn push(&mut self, state: State) {
         todo!()
     }
@@ -82,16 +83,12 @@ impl<State: Pod> RodaStore<State, CircularRodaStoreReader<State>> for CircularRo
         todo!()
     }
 
-    fn direct_index<Key: Pod>(&self) -> RodaDirectIndex<Key, State> {
+    fn direct_index<Key: Pod>(&self) -> DirectIndex<Key, State> {
         todo!()
     }
 }
 
-impl<State: Pod> RodaStoreReader<State> for CircularRodaStoreReader<State> {
-    fn collect<const N: usize>(&self) -> [&State; N] {
-        todo!()
-    }
-
+impl<State: Pod> StoreReader<State> for CircularRodaStoreReader<State> {
     fn next(&self) -> bool {
         todo!()
     }
@@ -100,21 +97,27 @@ impl<State: Pod> RodaStoreReader<State> for CircularRodaStoreReader<State> {
         todo!()
     }
 
-    fn with_at<R>(&self, index: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
+    fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
         todo!()
     }
 
-    fn get(&self) -> Option<State>
-    where
-        State: Clone,
-    {
+    fn with_last<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
         todo!()
     }
 
-    fn get_at(&self, index: usize) -> Option<State>
-    where
-        State: Clone,
-    {
+    fn get(&self) -> Option<State> {
+        todo!()
+    }
+
+    fn get_at(&self, at: usize) -> Option<State> {
+        todo!()
+    }
+
+    fn get_last(&self) -> Option<State> {
+        todo!()
+    }
+
+    fn get_window<const N: usize>(&self, at: usize) -> Option<[State; N]> {
         todo!()
     }
 }
@@ -198,17 +201,11 @@ pub struct Window<InValue, OutValue = ()> {
 }
 
 impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
-    pub fn from<Reader: RodaStoreReader<InValue>>(
-        &self,
-        reader: &Reader,
-    ) -> Window<InValue, OutValue> {
+    pub fn from<Reader: StoreReader<InValue>>(&self, reader: &Reader) -> Window<InValue, OutValue> {
         todo!()
     }
 
-    pub fn to<Reader: RodaStoreReader<OutValue>, Store: RodaStore<OutValue, Reader>>(
-        &self,
-        store: &mut Store,
-    ) -> Window<InValue, OutValue> {
+    pub fn to<S: Store<OutValue>>(&self, store: &mut S) -> Window<InValue, OutValue> {
         todo!()
     }
 }
@@ -220,10 +217,7 @@ impl<InValue, OutValue> Window<InValue, OutValue> {
 }
 
 impl<InValue: Pod, OutValue: Pod> Window<InValue, OutValue> {
-    pub fn pipe(
-        source: impl RodaStoreReader<InValue>,
-        target: CircularRodaStore<OutValue>,
-    ) -> Self {
+    pub fn pipe(source: impl StoreReader<InValue>, target: CircularRodaStore<OutValue>) -> Self {
         Self {
             _v: Default::default(),
             _out_v: Default::default(),

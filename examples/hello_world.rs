@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{RodaIndex, RodaStore, RodaStoreReader};
+use roda_state::components::{Index, Store, StoreReader};
 use roda_state::{Aggregator, RodaEngine, Window};
 use std::cmp::min;
 // ==============================================================================

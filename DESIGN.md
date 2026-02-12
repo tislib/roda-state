@@ -59,7 +59,7 @@ Roda uses traits to define the behavior of stores and readers, allowing for diff
 `CircularRodaStore`).
 
 * **RodaStore Trait:** Defines `push`, `reader`, and `direct_index`.
-* **RodaStoreReader Trait:** Defines `next`, `collect`, `with`, and `at`.
+* **RodaStoreReader Trait:** Defines `next`, `get_last_n`, `with`, and `at`.
 * **Explicit Advancement:** Each `StoreReader` maintains its own `LocalCursor`.
   The cursor is moved next everytime `next()` is called. So inside a worker for all used store readers `next()` function
   must be

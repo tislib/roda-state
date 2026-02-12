@@ -24,7 +24,7 @@ HFT, market microstructure research, telemetry, and any workload where microseco
 - Store<T>: a bounded, cache‑friendly ring buffer that holds your state. You choose the capacity up front.
     - push(value): append a new item (typically by a single writer thread)
     - reader(): returns a reader view appropriate for consumers
-    - collect::<N>(): read N most recent values (fast path for testing and examples)
+    - get_last_n::<N>(): read N most recent values (fast path for testing and examples)
     - with(|state| ...): execute a closure with a borrowed reference
 - Aggregator<In, Out, Key = ()>: a partitioned reducer for turning event streams into rolling state.
     - from(&reader): set the input source

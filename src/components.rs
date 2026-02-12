@@ -1,34 +1,33 @@
-use crate::RodaDirectIndex;
+use crate::DirectIndex;
 use bytemuck::Pod;
-use std::io::Read;
 
-pub trait RodaStore<State: Pod, Reader: RodaStoreReader<State>> {
+pub trait Store<State: Pod> {
+    type Reader: StoreReader<State>;
     fn push(&mut self, state: State);
-    fn reader(&self) -> Reader;
-    fn direct_index<Key: Pod>(&self) -> RodaDirectIndex<Key, State>;
+    fn reader(&self) -> Self::Reader;
+    fn direct_index<Key: Pod>(&self) -> DirectIndex<Key, State>;
 }
 
-pub trait RodaStoreReader<State: Pod> {
-    fn collect<const N: usize>(&self) -> [&State; N];
+pub trait StoreReader<State: Pod> {
     fn next(&self) -> bool;
+
     fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>;
-    fn with_at<R>(&self, index: usize, handler: impl FnOnce(&State) -> R) -> Option<R>;
-    fn get(&self) -> Option<State>
-    where
-        State: Clone;
-    fn get_at(&self, index: usize) -> Option<State>
-    where
-        State: Clone;
+    fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R>;
+    fn with_last<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>;
+
+    fn get(&self) -> Option<State>;
+    fn get_at(&self, at: usize) -> Option<State>;
+    fn get_last(&self) -> Option<State>;
+    fn get_window<const N: usize>(&self, at: usize) -> Option<[State; N]>;
 }
 
-pub trait RodaIndex<Key: Pod, State: Pod, Reader: RodaIndexReader<Key, State>> {
+pub trait Index<Key: Pod, State: Pod> {
+    type Reader: IndexReader<Key, State>;
     fn compute(&self, key_fn: impl FnOnce(&State) -> Key);
-    fn reader(&self) -> Reader;
+    fn reader(&self) -> Self::Reader;
 }
 
-pub trait RodaIndexReader<Key: Pod, State: Pod> {
+pub trait IndexReader<Key: Pod, State: Pod> {
     fn with<R>(&self, key: &Key, handler: impl FnOnce(&State) -> R) -> Option<R>;
-    fn get(&self, key: &Key) -> Option<&State>
-    where
-        Key: Clone;
+    fn get(&self, key: &Key) -> Option<State>;
 }

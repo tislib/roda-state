@@ -1,4 +1,4 @@
-use roda_state::components::{RodaIndex, RodaIndexReader, RodaStore};
+use roda_state::components::{Index, IndexReader, Store};
 use roda_state::RodaEngine;
 use std::thread;
 use std::time::Duration;
@@ -28,7 +28,7 @@ fn test_index_multiple_values() {
 
     let reader = index.reader();
     for i in 0..5 {
-        assert_eq!(reader.get(&(i * 10)).copied(), Some(i));
+        assert_eq!(reader.get(&(i * 10)), Some(i));
     }
 }
 
@@ -48,8 +48,8 @@ fn test_multiple_indices_on_same_store() {
     let reader_double = index_double.reader();
     let reader_triple = index_triple.reader();
 
-    assert_eq!(reader_double.get(&20).copied(), Some(10));
-    assert_eq!(reader_triple.get(&30).copied(), Some(10));
+    assert_eq!(reader_double.get(&20), Some(10));
+    assert_eq!(reader_triple.get(&30), Some(10));
 }
 
 #[test]
@@ -62,8 +62,8 @@ fn test_index_complex_key() {
     index.compute(|&val| ComplexKey { id: val, category: 1 });
 
     let reader = index.reader();
-    assert_eq!(reader.get(&ComplexKey { id: 100, category: 1 }).copied(), Some(100));
-    assert_eq!(reader.get(&ComplexKey { id: 100, category: 2 }).copied(), None);
+    assert_eq!(reader.get(&ComplexKey { id: 100, category: 1 }), Some(100));
+    assert_eq!(reader.get(&ComplexKey { id: 100, category: 2 }), None);
 }
 
 #[test]
@@ -77,8 +77,8 @@ fn test_index_shallow_clone_sharing() {
     store.push(42);
     index.compute(|&x| x);
 
-    assert_eq!(clone1.get(&42).copied(), Some(42));
-    assert_eq!(clone2.get(&42).copied(), Some(42));
+    assert_eq!(clone1.get(&42), Some(42));
+    assert_eq!(clone2.get(&42), Some(42));
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn test_index_collision_overwrite() {
 
     let reader = index.reader();
     // Usually a direct index mapping should store the latest value for a given key
-    assert_eq!(reader.get(&1).copied(), Some(20));
+    assert_eq!(reader.get(&1), Some(20));
 }
 
 #[test]
@@ -109,8 +109,8 @@ fn test_index_not_found() {
     index.compute(|x| x + 1);
 
     let reader = index.reader();
-    assert_eq!(reader.get(&11).copied(), Some(10));
-    assert_eq!(reader.get(&999).copied(), None);
+    assert_eq!(reader.get(&11), Some(10));
+    assert_eq!(reader.get(&999), None);
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn test_concurrent_push_and_index() {
     thread::sleep(Duration::from_millis(20));
 
     for i in 0..10 {
-        assert_eq!(index_reader.get(&i).copied(), Some(i));
+        assert_eq!(index_reader.get(&i), Some(i));
     }
 }
 
@@ -173,8 +173,8 @@ fn test_run_worker_with_multiple_stores() {
     // Wait for workers
     thread::sleep(Duration::from_millis(50));
 
-    assert_eq!(index_u32_reader.get(&100).copied(), Some(100));
-    let res_bytes = index_string_reader.get(&5).cloned().unwrap();
+    assert_eq!(index_u32_reader.get(&100), Some(100));
+    let res_bytes = index_string_reader.get(&5).unwrap();
     assert_eq!(&res_bytes[..5], b"hello");
 }
 
@@ -198,8 +198,8 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 
     thread::sleep(Duration::from_millis(50));
 
-    assert_eq!(reader1.get(&10).copied(), Some(1));
-    assert_eq!(reader2.get(&20).copied(), Some(2));
+    assert_eq!(reader1.get(&10), Some(1));
+    assert_eq!(reader2.get(&20), Some(2));
 }
 
 

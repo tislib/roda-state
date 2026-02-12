@@ -1,6 +1,6 @@
 use roda_state::{RodaEngine, Window};
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::components::{Store, StoreReader};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]
@@ -50,8 +50,8 @@ fn test_window_filling_and_sliding() {
         source.push(DataPoint { value: i as f64, ..Default::default() });
     }
 
-    // Validate by collecting all outputs (5 - 3 + 1 = 3)
-    let res = target_reader.collect::<3>();
+    // Validate by get_window all outputs (5 - 3 + 1 = 3)
+    let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].average, 2.0);
     assert_eq!(res[0].is_increasing, 1);
     assert_eq!(res[1].average, 3.0);
@@ -90,7 +90,7 @@ fn test_window_size_one() {
         source.push(DataPoint { value: v, ..Default::default() });
     }
 
-    let res = target_reader.collect::<3>();
+    let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].average, 10.0);
     assert_eq!(res[0].is_increasing, 0);
     assert_eq!(res[1].average, 20.0);
@@ -132,7 +132,7 @@ fn test_window_large_sliding() {
         source.push(DataPoint { value: i as f64, ..Default::default() });
     }
 
-    let res = target_reader.collect::<3>();
+    let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].average, 4.5);
     assert_eq!(res[0].is_increasing, 1);
     assert_eq!(res[1].average, 5.5);
@@ -176,7 +176,7 @@ fn test_window_worker_large() {
         source.push(DataPoint { value: i as f64, ..Default::default() });
     }
 
-    let res = target_reader.collect::<991>();
+    let res = target_reader.get_window::<991>(0).unwrap();
     assert_eq!(res[0].average, 4.5); // (0+1+2+3+4+5+6+7+8+9)/10 = 45/10 = 4.5
     assert_eq!(res[0].is_increasing, 1);
 }
@@ -205,10 +205,10 @@ fn test_window_max_value() {
         source.push(DataPoint { value: v, ..Default::default() });
     }
 
-    let res = target_reader.collect::<3>();
-    assert_eq!(*res[0], 3.0);
-    assert_eq!(*res[1], 5.0);
-    assert_eq!(*res[2], 5.0);
+    let res = target_reader.get_window::<3>(0).unwrap();
+    assert_eq!(res[0], 3.0);
+    assert_eq!(res[1], 5.0);
+    assert_eq!(res[2], 5.0);
 }
 
 #[test]
@@ -244,6 +244,6 @@ fn test_window_all_none_until_full() {
         source.push(DataPoint { value: i as f64, ..Default::default() });
     }
 
-    let res = target_reader.collect::<1>();
-    assert_eq!(*res[0], 1);
+    let res = target_reader.get_window::<1>(0).unwrap();
+    assert_eq!(res[0], 1);
 }
