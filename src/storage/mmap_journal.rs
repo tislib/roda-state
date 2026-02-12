@@ -73,6 +73,18 @@ impl MmapRing {
         bytemuck::from_bytes(&self.slice()[actual_offset..end])
     }
 
+    pub(crate) fn read_window<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
+        let actual_offset = offset % self.len;
+        let end = actual_offset + size_of::<T>() * N;
+        assert!(
+            end <= self.len,
+            "Read crosses buffer boundary - alignment issue?"
+        );
+        let bytes = &self.slice()[actual_offset..end];
+
+        bytemuck::cast_slice(bytes)
+    }
+
     pub fn append<T: Pod>(&mut self, state: &T) {
         let current_pos = self.write_index.load(std::sync::atomic::Ordering::Relaxed);
         let size = size_of::<T>();

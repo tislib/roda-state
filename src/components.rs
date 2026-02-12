@@ -29,7 +29,7 @@ pub trait StoreReader<State: Pod + Send>: Send {
     fn get(&self) -> Option<State>;
     fn get_at(&self, at: usize) -> Option<State>;
     fn get_last(&self) -> Option<State>;
-    fn get_window<const N: usize>(&self, at: usize) -> Option<[State; N]>;
+    fn get_window<const N: usize>(&self, at: usize) -> Option<&[State]>;
 }
 
 pub trait Index<Key: Pod, State: Pod> {

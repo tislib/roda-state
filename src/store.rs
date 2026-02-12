@@ -124,7 +124,7 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
         self.with_last(|s| *s)
     }
 
-    fn get_window<const N: usize>(&self, at: usize) -> Option<[State; N]> {
+    fn get_window<const N: usize>(&self, at: usize) -> Option<&[State]> {
         let offset = at * size_of::<State>();
         let write_index = self.storage.get_write_index();
         if offset + size_of::<State>() * N > write_index {
@@ -134,8 +134,6 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
             return None; // Part of the window has been overwritten
         }
 
-        Some(std::array::from_fn(|i| {
-            *self.storage.read::<State>(offset + i * size_of::<State>())
-        }))
+        Some(self.storage.read_window::<State, N>(offset))
     }
 }
