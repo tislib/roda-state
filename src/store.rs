@@ -129,10 +129,8 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
             return None; // Part of the window has been overwritten
         }
 
-        let mut window = Vec::with_capacity(N);
-        for i in 0..N {
-            window.push(*self.storage.read::<State>(offset + i * size_of::<State>()));
-        }
-        window.try_into().ok()
+        Some(std::array::from_fn(|i| {
+            *self.storage.read::<State>(offset + i * size_of::<State>())
+        }))
     }
 }
