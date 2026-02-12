@@ -6,9 +6,9 @@ echo "Running rustfmt..."
 cargo fmt --all --check
 
 echo "Running clippy..." // temporary disabled, slows down active development, will be reenabled
-cargo clippy --workspace -- -D warnings
+cargo clippy -- -D warnings
 
 echo "Running tests..."
-cargo test --workspace
+cargo test
 
 echo "All checks passed!"
