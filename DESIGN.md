@@ -58,8 +58,8 @@ The `CircularRodaStore<T>` is a fixed-capacity circular buffer backed by memory-
 Roda uses traits to define the behavior of stores and readers, allowing for different implementations (like the default
 `CircularRodaStore`).
 
-* **RodaStore Trait:** Defines `push`, `reader`, and `direct_index`.
-* **RodaStoreReader Trait:** Defines `next`, `get_last_n`, `with`, and `at`.
+* **Store Trait:** Defines `push`, `reader`, and `direct_index`.
+* **StoreReader Trait:** Defines `next`, `with`, `with_at`, `with_last`, `get`, `get_at`, `get_last`, and `get_window`.
 * **Explicit Advancement:** Each `StoreReader` maintains its own `LocalCursor`.
   The cursor is moved next everytime `next()` is called. So inside a worker for all used store readers `next()` function
   must be

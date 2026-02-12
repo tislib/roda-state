@@ -23,9 +23,13 @@ HFT, market microstructure research, telemetry, and any workload where microseco
 - Engine: orchestrates workers (long‑lived tasks) that advance your pipelines.
 - Store<T>: a bounded, cache‑friendly ring buffer that holds your state. You choose the capacity up front.
     - push(value): append a new item (typically by a single writer thread)
-    - reader(): returns a reader view appropriate for consumers
-    - get_last_n::<N>(): read N most recent values (fast path for testing and examples)
-    - with(|state| ...): execute a closure with a borrowed reference
+    - reader(): returns a `StoreReader` view appropriate for consumers
+    - direct_index<Key>(): build a secondary index over the store
+- StoreReader<T>: a cursor‑based handle for consuming state from a `Store`.
+    - next(): advance the cursor to the next available item
+    - get(), get_at(at), get_last(): retrieve a copy of the state
+    - get_window::<N>(at): retrieve a fixed‑size window of state
+    - with(|state| ...), with_at(at, |state| ...), with_last(|state| ...): execute a closure with a borrowed reference
 - Aggregator<In, Out, Key = ()>: a partitioned reducer for turning event streams into rolling state.
     - from(&reader): set the input source
     - to(&mut store): set the output target
@@ -74,7 +78,7 @@ candles, then derive a simple momentum signal via a sliding window.
 
 ```rust
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::components::{Index, Store, StoreReader};
 use roda_state::{Aggregator, RodaEngine, Window};
 
 #[repr(C)]
