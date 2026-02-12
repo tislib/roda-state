@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Store, StoreReader};
+use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
 use roda_state::{RodaEngine, Window};
 
 #[repr(C)]
@@ -20,8 +20,8 @@ pub struct Analysis {
 #[ignore]
 fn test_window_filling_and_sliding() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(10);
-    let mut target = engine.store::<Analysis>(10);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 10, in_memory: true });
+    let mut target = engine.store::<Analysis>(StoreOptions { name: "target", size: 10, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();
@@ -69,8 +69,8 @@ fn test_window_filling_and_sliding() {
 #[ignore]
 fn test_window_size_one() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(10);
-    let mut target = engine.store::<Analysis>(10);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 10, in_memory: true });
+    let mut target = engine.store::<Analysis>(StoreOptions { name: "target", size: 10, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();
@@ -112,8 +112,8 @@ fn test_window_size_one() {
 #[ignore]
 fn test_window_large_sliding() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(100);
-    let mut target = engine.store::<Analysis>(100);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 100, in_memory: true });
+    let mut target = engine.store::<Analysis>(StoreOptions { name: "target", size: 100, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();
@@ -166,8 +166,8 @@ fn test_window_worker_large() {
     use std::time::Duration;
 
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(2000);
-    let mut target = engine.store::<Analysis>(2000);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 2000, in_memory: true });
+    let mut target = engine.store::<Analysis>(StoreOptions { name: "target", size: 2000, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();
@@ -210,8 +210,8 @@ fn test_window_worker_large() {
 #[ignore]
 fn test_window_max_value() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(10);
-    let mut target = engine.store::<f64>(10);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 10, in_memory: true });
+    let mut target = engine.store::<f64>(StoreOptions { name: "target", size: 10, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();
@@ -247,8 +247,8 @@ fn test_window_all_none_until_full() {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     let engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(10);
-    let mut target = engine.store::<u8>(10);
+    let mut source = engine.store::<DataPoint>(StoreOptions { name: "source", size: 10, in_memory: true });
+    let mut target = engine.store::<u8>(StoreOptions { name: "target", size: 10, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut pipeline = Window::new();

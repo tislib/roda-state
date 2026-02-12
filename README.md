@@ -94,7 +94,7 @@ Below is a trimmed version of `examples/hello_world.rs` that demonstrates a two-
 
 ```rust
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Index, Store, StoreReader};
+use roda_state::components::{Engine, Index, Store, StoreOptions, StoreReader};
 use roda_state::{Aggregator, RodaEngine, Window};
 
 #[repr(C)]
@@ -136,11 +136,23 @@ fn main() {
     let engine = RodaEngine::new();
 
     // Allocate bounded stores (explicit memory profile)
-    let tick_store = engine.store::<Tick>(1_000_000);
+    let tick_store = engine.store::<Tick>(StoreOptions {
+        name: "ticks",
+        size: 1_000_000,
+        in_memory: true,
+    });
     let tick_reader = tick_store.reader();
-    let mut ohlc_store = engine.store::<OHLC>(10_000);
+    let mut ohlc_store = engine.store::<OHLC>(StoreOptions {
+        name: "ohlc",
+        size: 10_000,
+        in_memory: true,
+    });
     let ohlc_reader = ohlc_store.reader();
-    let mut signal_store = engine.store::<Signal>(10_000);
+    let mut signal_store = engine.store::<Signal>(StoreOptions {
+        name: "signals",
+        size: 10_000,
+        in_memory: true,
+    });
 
     // Index to locate candles by (symbol, time)
     let ohlc_index = ohlc_store.direct_index::<TimeKey>();

@@ -1,4 +1,4 @@
-use crate::store::{CircularRodaStore, CircularRodaStoreReader};
+use crate::components::{Store, StoreReader};
 use bytemuck::Pod;
 use std::marker::PhantomData;
 
@@ -8,19 +8,19 @@ pub struct Aggregator<InValue: Pod, OutValue: Pod, PartitionKey = ()> {
     pub(crate) _partition_key: PhantomData<PartitionKey>,
 }
 
-impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+impl<InValue: Pod, OutValue: Pod + Send, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
     pub fn to(
         &self,
-        _p0: &mut CircularRodaStore<OutValue>,
+        _p0: &mut impl Store<OutValue>,
     ) -> Aggregator<InValue, OutValue, PartitionKey> {
         todo!()
     }
 }
 
-impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+impl<InValue: Pod + Send, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
     pub fn from(
         &self,
-        _p0: &CircularRodaStoreReader<InValue>,
+        _p0: &impl StoreReader<InValue>,
     ) -> Aggregator<InValue, OutValue, PartitionKey> {
         todo!()
     }
@@ -44,8 +44,10 @@ impl<InValue: Pod, OutValue: Pod, PartitionKey> Default
     }
 }
 
-impl<InValue: Pod, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
-    pub fn pipe(_source: CircularRodaStore<InValue>, _target: CircularRodaStore<OutValue>) -> Self {
+impl<InValue: Pod + Send, OutValue: Pod + Send, PartitionKey>
+    Aggregator<InValue, OutValue, PartitionKey>
+{
+    pub fn pipe(_source: impl Store<InValue>, _target: impl Store<OutValue>) -> Self {
         Self {
             _v: Default::default(),
             _out_v: Default::default(),

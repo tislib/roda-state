@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Store, StoreReader};
+use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
 use roda_state::{Aggregator, RodaEngine};
 
 #[repr(C)]
@@ -31,8 +31,8 @@ pub struct GroupKey {
 #[ignore]
 fn test_aggregator_count_and_sum() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(1024);
-    let mut target = engine.store::<SensorStats>(1024);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
@@ -75,8 +75,8 @@ fn test_aggregator_count_and_sum() {
 #[ignore]
 fn test_aggregator_min_max_tracking() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(1024);
-    let mut target = engine.store::<SensorStats>(1024);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
@@ -128,8 +128,8 @@ fn test_aggregator_min_max_tracking() {
 #[ignore]
 fn test_aggregator_multiple_partitions() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(1024);
-    let mut target = engine.store::<SensorStats>(1024);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
@@ -179,8 +179,8 @@ fn test_aggregator_multiple_partitions() {
 #[ignore]
 fn test_aggregator_complex_key() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(1024);
-    let mut target = engine.store::<SensorStats>(1024);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
@@ -217,8 +217,8 @@ fn test_aggregator_complex_key() {
 #[ignore]
 fn test_aggregator_reset_behavior() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(10);
-    let mut target = engine.store::<SensorStats>(10);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 10, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 10, in_memory: true });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
@@ -267,8 +267,8 @@ fn test_aggregator_reset_behavior() {
 #[ignore]
 fn test_aggregator_large_index() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(1024);
-    let mut target = engine.store::<SensorStats>(1024);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
@@ -309,8 +309,8 @@ fn test_aggregator_worker_large() {
     use std::time::Duration;
 
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(2000);
-    let mut target = engine.store::<SensorStats>(2000);
+    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 2000, in_memory: true });
+    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 2000, in_memory: true });
     let source_reader = source.reader();
     let target_reader = target.reader();
 

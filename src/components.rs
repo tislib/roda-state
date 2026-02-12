@@ -1,14 +1,25 @@
 use crate::index::DirectIndex;
 use bytemuck::Pod;
 
-pub trait Store<State: Pod> {
+pub struct StoreOptions {
+    pub name: &'static str,
+    pub size: usize,
+    pub in_memory: bool,
+}
+
+pub trait Engine {
+    fn run_worker(&self, runnable: impl FnMut() + Send + 'static);
+    fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static;
+}
+
+pub trait Store<State: Pod + Send>: Send {
     type Reader: StoreReader<State>;
     fn push(&mut self, state: State);
     fn reader(&self) -> Self::Reader;
     fn direct_index<Key: Pod>(&self) -> DirectIndex<Key, State>;
 }
 
-pub trait StoreReader<State: Pod> {
+pub trait StoreReader<State: Pod + Send>: Send {
     fn next(&self) -> bool;
 
     fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>;

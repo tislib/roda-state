@@ -1,11 +1,14 @@
 use roda_state::RodaEngine;
-use roda_state::components::{Store, StoreReader};
+use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
 
 #[test]
-#[ignore]
 fn test_push_then_read_single() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions {
+        name: "test1",
+        size: 1024,
+        in_memory: true,
+    });
     let reader = store.reader();
 
     store.push(42);
@@ -15,10 +18,13 @@ fn test_push_then_read_single() {
 }
 
 #[test]
-#[ignore]
 fn test_multiple_push_read_in_order() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions {
+        name: "test2",
+        size: 1024,
+        in_memory: true,
+    });
     let reader = store.reader();
 
     for v in [1u32, 2, 3, 4, 5] {
@@ -32,10 +38,13 @@ fn test_multiple_push_read_in_order() {
 }
 
 #[test]
-#[ignore]
 fn test_interleaved_push_and_read() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions {
+        name: "test3",
+        size: 1024,
+        in_memory: true,
+    });
     let reader = store.reader();
 
     // Push values; verify FIFO order via get_window
@@ -52,12 +61,19 @@ fn test_interleaved_push_and_read() {
 }
 
 #[test]
-#[ignore]
 fn test_stores_are_isolated_by_type() {
     let engine = RodaEngine::new();
 
-    let mut u_store = engine.store::<u32>(1024);
-    let mut i_store = engine.store::<i64>(1024);
+    let mut u_store = engine.store::<u32>(StoreOptions {
+        name: "u32",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut i_store = engine.store::<i64>(StoreOptions {
+        name: "i64",
+        size: 1024,
+        in_memory: true,
+    });
     let u_reader = u_store.reader();
     let i_reader = i_store.reader();
 
@@ -76,10 +92,13 @@ fn test_stores_are_isolated_by_type() {
 }
 
 #[test]
-#[ignore]
 fn test_push_after_partial_reads() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions {
+        name: "test4",
+        size: 1024,
+        in_memory: true,
+    });
     let reader = store.reader();
 
     store.push(100);

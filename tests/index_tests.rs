@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use roda_state::RodaEngine;
-use roda_state::components::{Index, IndexReader, Store};
+use roda_state::components::{Engine, Index, IndexReader, Store, StoreOptions};
 use std::thread;
 use std::time::Duration;
 
@@ -15,7 +15,7 @@ struct ComplexKey {
 #[ignore]
 fn test_index_multiple_values() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
 
     for i in 0..5 {
@@ -37,7 +37,7 @@ fn test_index_multiple_values() {
 #[ignore]
 fn test_multiple_indices_on_same_store() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
 
     let index_double = store.direct_index::<u32>();
     let index_triple = store.direct_index::<u32>();
@@ -58,7 +58,7 @@ fn test_multiple_indices_on_same_store() {
 #[ignore]
 fn test_index_complex_key() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<ComplexKey>();
 
     store.push(100);
@@ -88,7 +88,7 @@ fn test_index_complex_key() {
 #[ignore]
 fn test_index_shallow_clone_sharing() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
     let clone1 = index.reader();
     let clone2 = index.reader();
@@ -104,7 +104,7 @@ fn test_index_shallow_clone_sharing() {
 #[ignore]
 fn test_index_collision_overwrite() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
 
     // Both 10 and 20 will map to key 1
@@ -123,7 +123,7 @@ fn test_index_collision_overwrite() {
 #[ignore]
 fn test_index_not_found() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
 
     store.push(10);
@@ -138,7 +138,7 @@ fn test_index_not_found() {
 #[ignore]
 fn test_concurrent_push_and_index() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
     let index_reader = index.reader();
 
@@ -168,8 +168,8 @@ fn test_concurrent_push_and_index() {
 #[ignore]
 fn test_run_worker_with_multiple_stores() {
     let engine = RodaEngine::new();
-    let mut store_u32 = engine.store::<u32>(1024);
-    let mut store_string = engine.store::<[u8; 16]>(1024);
+    let mut store_u32 = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
+    let mut store_string = engine.store::<[u8; 16]>(StoreOptions { name: "test", size: 1024, in_memory: true });
 
     let index_u32 = store_u32.direct_index::<u32>();
     let index_string = store_string.direct_index::<usize>();
@@ -187,7 +187,7 @@ fn test_run_worker_with_multiple_stores() {
         let mut bytes = [0u8; 16];
         bytes[..5].copy_from_slice(b"hello");
         store_string.push(bytes);
-        index_string.compute(|s| {
+        index_string.compute(|s: &[u8; 16]| {
             let len = s.iter().take_while(|&&b| b != 0).count();
             len
         });
@@ -205,7 +205,7 @@ fn test_run_worker_with_multiple_stores() {
 #[ignore]
 fn test_multiple_workers_reading_index_only_original_computes() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
 
     let reader1 = index.reader();
@@ -230,7 +230,7 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 #[ignore]
 fn test_reader_cannot_compute() {
     let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(1024);
+    let mut store = engine.store::<u32>(StoreOptions { name: "test", size: 1024, in_memory: true });
     let index = store.direct_index::<u32>();
     let _reader = index.reader();
 
