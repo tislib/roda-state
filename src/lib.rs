@@ -1,7 +1,7 @@
 pub mod components;
 mod store;
 
-use crate::components::{RodaStore, RodaStoreReader};
+use crate::components::{RodaIndex, RodaIndexReader, RodaStore, RodaStoreReader};
 use bytemuck::Pod;
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
@@ -10,25 +10,34 @@ use std::thread;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RodaError {}
 
-pub struct RodaDirectIndex<Key, Value> {
+pub struct RodaDirectIndex<Key: Pod, Value: Pod> {
     _k: PhantomData<Key>,
     _v: PhantomData<Value>,
 }
 
-impl<Key, Value> RodaDirectIndex<Key, Value> {
-    pub fn get(&self, key: &Key) -> Option<&Value> {
+pub struct RodaDirectIndexReader<Key: Pod, Value: Pod> {
+    _k: PhantomData<Key>,
+    _v: PhantomData<Value>,
+}
+
+impl<Key: Pod, Value: Pod> RodaIndex<Key, Value, RodaDirectIndexReader<Key, Value>>
+    for RodaDirectIndex<Key, Value>
+{
+    fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
+        todo!()
+    }
+
+    fn reader(&self) -> RodaDirectIndexReader<Key, Value> {
         todo!()
     }
 }
 
-impl<Key, Value> RodaDirectIndex<Key, Value> {
-    pub fn shallow_clone(&self) -> RodaDirectIndex<Key, Value> {
+impl<Key: Pod, Value: Pod> RodaIndexReader<Key, Value> for RodaDirectIndexReader<Key, Value> {
+    fn with<R>(&self, key: &Key, handler: impl FnOnce(&Value) -> R) -> Option<R> {
         todo!()
     }
-}
 
-impl<Key, Value> RodaDirectIndex<Key, Value> {
-    pub fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
+    fn get(&self, key: &Key) -> Option<&Value> {
         todo!()
     }
 }
@@ -73,7 +82,7 @@ impl<State: Pod> RodaStore<State, CircularRodaStoreReader<State>> for CircularRo
         todo!()
     }
 
-    fn direct_index<Key>(&self) -> RodaDirectIndex<Key, State> {
+    fn direct_index<Key: Pod>(&self) -> RodaDirectIndex<Key, State> {
         todo!()
     }
 }
@@ -91,7 +100,21 @@ impl<State: Pod> RodaStoreReader<State> for CircularRodaStoreReader<State> {
         todo!()
     }
 
-    fn at<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
+    fn with_at<R>(&self, index: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
+        todo!()
+    }
+
+    fn get(&self) -> Option<State>
+    where
+        State: Clone,
+    {
+        todo!()
+    }
+
+    fn get_at(&self, index: usize) -> Option<State>
+    where
+        State: Clone,
+    {
         todo!()
     }
 }
@@ -100,8 +123,10 @@ pub struct RodaEngine {}
 
 impl RodaEngine {
     pub fn run_worker(&self, mut runnable: impl FnMut() + Send + 'static) {
-        thread::spawn(move || loop {
-            runnable();
+        thread::spawn(move || {
+            loop {
+                runnable();
+            }
         });
     }
 }

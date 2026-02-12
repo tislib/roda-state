@@ -26,17 +26,19 @@ The system follows a **Shared-Nothing** architecture for logic (workers don't sh
 
 ### 2.1 The Engine (Orchestrator)
 
-The `RodaEngine` is the "Bootloader" of the system. It is responsible for:
+The `RodaEngine` acts as the system's bootloader, managing resources and thread lifecycle.
 
-* Allocating large contiguous memory blocks via `mmap`.
-* Initializing shared memory structures (headers, ring buffers).
-* Spawning long-lived worker threads and optionally pinning them to CPU cores.
+**Core Responsibilities:**
 
-Each time you call run_worker, a new thread is spawned, and inside it in busy loop it processes data.
+* **Memory Management:** Allocates large, contiguous memory blocks via `mmap` and initializes shared structures (ring buffers, headers).
+* **Thread Orchestration:** Spawns long-lived worker threads, optionally pinning them to specific CPU cores (`isolcpus`) for deterministic execution.
 
-While the worker is processing data, it continuously (in every Nth cycle) checks for data movements. If no data
-processed
-for specific cycles, The worker initially will start spinning, but after some time it will switch to a sleep mode.s
+**Worker Execution Model:**
+Workers execute user pipelines in a continuous loop using an **Adaptive Backoff Strategy** to balance latency and efficiency:
+
+1. **Busy Spin (Hot Path):** Continuously polls cursors for nanosecond-level response times.
+2. **CPU Relax (Warm Path):** After empty cycles, emits `PAUSE` instructions (`std::hint::spin_loop`) to reduce power usage.
+3. **Park/Sleep (Cold Path):** After extended inactivity, yields the thread to the OS scheduler to save resources until new data arrives.
 
 ### 2.2 The Store (The Source of Truth)
 

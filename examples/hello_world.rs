@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::components::{RodaIndex, RodaStore, RodaStoreReader};
 use roda_state::{Aggregator, RodaEngine, Window};
 use std::cmp::min;
 // ==============================================================================
@@ -25,7 +25,8 @@ pub struct OHLC {
     pub timestamp: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, Pod, Zeroable)]
 pub struct TimeKey {
     pub symbol: u64,
     pub timestamp: u64,
