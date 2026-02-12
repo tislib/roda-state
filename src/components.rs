@@ -1,4 +1,4 @@
-use crate::DirectIndex;
+use crate::index::DirectIndex;
 use bytemuck::Pod;
 
 pub trait Store<State: Pod> {
