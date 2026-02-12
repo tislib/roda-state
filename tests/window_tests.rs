@@ -1,6 +1,6 @@
-use roda_core::{RodaEngine, Window};
+use roda_state::{RodaEngine, Window};
 use bytemuck::{Pod, Zeroable};
-use roda_core::components::{RodaStore, RodaStoreReader};
+use roda_state::components::{RodaStore, RodaStoreReader};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]

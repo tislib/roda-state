@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
-use roda_core::components::{RodaStore, RodaStoreReader};
-use roda_core::{Aggregator, RodaEngine, Window};
+use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::{Aggregator, RodaEngine, Window};
 use std::cmp::min;
 // ==============================================================================
 // 1. DATA CONTRACT

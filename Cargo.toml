@@ -1,21 +1,25 @@
-[workspace]
-members = ["crates/roda-core"]
-resolver = "2"
-
 [package]
-name = "roda"
+name = "roda-state"
 version = "0.1.0"
 edition = "2024"
+description = "A wait-free, cache-friendly state synchronization engine for HFT."
+authors = ["Your Name"]
 
 [dependencies]
 spdlog-rs = "0.5.2"
 rand = "0.10.0-rc.6"
-roda-core = {path = "crates/roda-core"}
 bytemuck = {version = "1.25.0", features = ["derive"]}
+memmap2 = "0.9.9"
+thiserror = "2.0.18"
+crossbeam-utils = "0.8.21"
+libc = "0.2" # Needed for mlock (memory pinning) and sched_setaffinity
 
 [dev-dependencies]
 assert_no_alloc = { version = "1.1.2" }
+criterion = "0.8.2"
 
+[lib]
+bench = false # We use the 'benches/' directory
 
 [profile.profiling]
 inherits = "release"

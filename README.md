@@ -53,18 +53,18 @@ Roda is designed as a **Shared-Memory, Single-Writer Multi-Reader (SWMR)** syste
 
 ## Quick start
 
-Using the workspace directly:
+Using the crate directly:
 
 ```bash
 # Run the end‑to‑end example
 cargo run --example hello_world
 ```
 
-Or add roda‑core to your own Cargo.toml while working from this repository:
+Or add roda‑state to your own Cargo.toml while working from this repository:
 
 ```toml
 [dependencies]
-roda-core = { path = "crates/roda-core" }
+roda-state = { path = "." }
 ```
 
 ## Example: from ticks to OHLC to trading signals
@@ -74,8 +74,8 @@ candles, then derive a simple momentum signal via a sliding window.
 
 ```rust
 use bytemuck::{Pod, Zeroable};
-use roda_core::components::{RodaStore, RodaStoreReader};
-use roda_core::{Aggregator, RodaEngine, Window};
+use roda_state::components::{RodaStore, RodaStoreReader};
+use roda_state::{Aggregator, RodaEngine, Window};
 
 #[repr(C)]
 #[derive(Clone, Copy, Default, Pod, Zeroable)]

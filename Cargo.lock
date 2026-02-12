@@ -702,25 +702,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
 
 [[package]]
-name = "roda"
+name = "roda-state"
 version = "0.1.0"
 dependencies = [
  "assert_no_alloc",
- "bytemuck",
- "rand",
- "roda-core",
- "spdlog-rs",
-]
-
-[[package]]
-name = "roda-core"
-version = "0.1.0"
-dependencies = [
  "bytemuck",
  "criterion",
  "crossbeam-utils",
  "libc",
  "memmap2",
+ "rand",
+ "spdlog-rs",
  "thiserror",
 ]
 
