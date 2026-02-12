@@ -35,7 +35,12 @@ impl<State: Pod + Send> Store<State> for CircularStore {
     type Reader = CircularStoreReader;
 
     fn push(&mut self, state: State) {
-        assert!(self.storage.len() >= size_of::<State>(), "Store size {} is too small for State size {}", self.storage.len(), size_of::<State>());
+        assert!(
+            self.storage.len() >= size_of::<State>(),
+            "Store size {} is too small for State size {}",
+            self.storage.len(),
+            size_of::<State>()
+        );
         self.storage.append(&state);
     }
 
@@ -59,7 +64,7 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();
         let write_index = self.storage.get_write_index();
-        
+
         if offset + size_of::<State>() > write_index {
             return false;
         }

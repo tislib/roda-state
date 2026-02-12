@@ -2,9 +2,9 @@ pub mod aggregator;
 pub mod components;
 pub mod engine;
 pub mod index;
+mod storage;
 pub mod store;
 pub mod window;
-mod storage;
 
 pub use crate::aggregator::Aggregator;
 pub use crate::engine::RodaEngine;

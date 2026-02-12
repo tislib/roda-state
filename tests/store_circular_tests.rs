@@ -29,7 +29,7 @@ fn test_store_wrap_around() {
     assert_eq!(reader.get_at(0), None);
     // index 8 should be present
     assert_eq!(reader.get_at(8), Some(8));
-    
+
     // get_last should be 8
     assert_eq!(reader.get_last(), Some(8));
 }
@@ -64,7 +64,7 @@ fn test_reader_lapping_catch_up() {
     }
 
     // Calling next() should detect lapping and catch up to the oldest available data (index 4)
-    assert!(reader.next()); 
+    assert!(reader.next());
     // It should skip 1, 2, 3 and jump to the oldest available element after being lapped.
     // My implementation sets it to min_offset / size + 1.
     // min_offset = 32. new_index = 32 / 8 = 4. next_index set to 5.
@@ -87,7 +87,7 @@ fn test_get_window_lapping() {
         store.push(i as u64);
     }
     // Write index is 12*8 = 96. min_offset is 32 (index 4).
-    
+
     // Window at index 4 (length 4) should be [4, 5, 6, 7]
     let win = reader.get_window::<4>(4).unwrap();
     assert_eq!(win, [4, 5, 6, 7]);
@@ -112,9 +112,9 @@ fn test_large_rolling_push() {
     }
 
     assert_eq!(reader.get_last(), Some(999));
-    
+
     // The buffer holds last 128 elements.
-    // 1000 - 128 = 872. 
+    // 1000 - 128 = 872.
     // Indices 872 to 999 should be available.
     assert_eq!(reader.get_at(872), Some(872));
     assert_eq!(reader.get_at(871), None);

@@ -55,13 +55,13 @@ fn main() {
         in_memory: true,
     });
     let tick_reader = tick_store.reader();
-    let mut ohlc_store = engine.store::<OHLC>(StoreOptions{
+    let mut ohlc_store = engine.store::<OHLC>(StoreOptions {
         name: "ohlc",
         size: 10_000,
         in_memory: true,
     });
     let ohlc_reader = ohlc_store.reader();
-    let mut simple_strategy = engine.store::<Signal>(StoreOptions{
+    let mut simple_strategy = engine.store::<Signal>(StoreOptions {
         name: "simple_strategy",
         size: 10_000,
         in_memory: true,
@@ -71,8 +71,8 @@ fn main() {
     let ohlc_index = ohlc_store.direct_index::<TimeKey>();
 
     // B. PIPELINE
-    let mut ohlc_pipeline: Aggregator<Tick, OHLC, TimeKey> = Aggregator::new();
-    let mut simple_strategy_pipeline: Window<OHLC, Signal> = Window::new();
+    let ohlc_pipeline: Aggregator<Tick, OHLC, TimeKey> = Aggregator::new();
+    let simple_strategy_pipeline: Window<OHLC, Signal> = Window::new();
 
     // C. WORKER
     engine.run_worker(move || {

@@ -31,12 +31,20 @@ pub struct GroupKey {
 #[ignore]
 fn test_aggregator_count_and_sum() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 1024,
+        in_memory: true,
+    });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     // Run aggregation inside worker
     engine.run_worker(move || {
@@ -75,12 +83,20 @@ fn test_aggregator_count_and_sum() {
 #[ignore]
 fn test_aggregator_min_max_tracking() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 1024,
+        in_memory: true,
+    });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     // Run aggregation inside worker
     engine.run_worker(move || {
@@ -128,12 +144,20 @@ fn test_aggregator_min_max_tracking() {
 #[ignore]
 fn test_aggregator_multiple_partitions() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 1024,
+        in_memory: true,
+    });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     // Run aggregation inside worker
     engine.run_worker(move || {
@@ -179,12 +203,20 @@ fn test_aggregator_multiple_partitions() {
 #[ignore]
 fn test_aggregator_complex_key() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 1024,
+        in_memory: true,
+    });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, GroupKey> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, GroupKey> = Aggregator::new();
 
     // Run aggregation with complex key inside worker
     engine.run_worker(move || {
@@ -217,12 +249,20 @@ fn test_aggregator_complex_key() {
 #[ignore]
 fn test_aggregator_reset_behavior() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 10, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 10, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 10,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 10,
+        in_memory: true,
+    });
 
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     // Run aggregation inside worker
     engine.run_worker(move || {
@@ -267,8 +307,16 @@ fn test_aggregator_reset_behavior() {
 #[ignore]
 fn test_aggregator_large_index() {
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 1024, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 1024, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 1024,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 1024,
+        in_memory: true,
+    });
     let source_reader = source.reader();
     let target_reader = target.reader();
     let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
@@ -309,12 +357,20 @@ fn test_aggregator_worker_large() {
     use std::time::Duration;
 
     let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions { name: "source", size: 2000, in_memory: true });
-    let mut target = engine.store::<SensorStats>(StoreOptions { name: "target", size: 2000, in_memory: true });
+    let mut source = engine.store::<SensorReading>(StoreOptions {
+        name: "source",
+        size: 2000,
+        in_memory: true,
+    });
+    let mut target = engine.store::<SensorStats>(StoreOptions {
+        name: "target",
+        size: 2000,
+        in_memory: true,
+    });
     let source_reader = source.reader();
     let target_reader = target.reader();
 
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     engine.run_worker(move || {
         source_reader.next();

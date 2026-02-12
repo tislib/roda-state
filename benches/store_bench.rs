@@ -1,8 +1,8 @@
-use std::hint::black_box;
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use bytemuck::{Pod, Zeroable};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use roda_state::RodaEngine;
 use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
-use bytemuck::{Pod, Zeroable};
+use std::hint::black_box;
 
 #[derive(Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
@@ -15,7 +15,7 @@ fn bench_push(c: &mut Criterion) {
     let mut group = c.benchmark_group("push");
 
     // 1GB buffer to ensure we don't overflow during benchmarking
-    let size = 1024 * 1024 * 1024; 
+    let size = 1024 * 1024 * 1024;
     let mut store_u64 = engine.store::<u64>(StoreOptions {
         name: "bench_push_u64",
         size,
@@ -127,7 +127,7 @@ fn bench_window(c: &mut Criterion) {
             black_box(reader.get_window::<10>(black_box(5000)));
         });
     });
-    
+
     group.bench_function("get_window_100", |b| {
         b.iter(|| {
             black_box(reader.get_window::<100>(black_box(5000)));

@@ -61,11 +61,15 @@ impl MmapRing {
     // --- Bytemuck Methods ---
 
     /// 1. Read (Immutable)
+    ///
     /// Casts bytes at offset to a reference of T.
     pub fn read<T: Pod>(&self, offset: usize) -> &T {
         let actual_offset = offset % self.len;
         let end = actual_offset + size_of::<T>();
-        assert!(end <= self.len, "Read crosses buffer boundary - alignment issue?");
+        assert!(
+            end <= self.len,
+            "Read crosses buffer boundary - alignment issue?"
+        );
         bytemuck::from_bytes(&self.slice()[actual_offset..end])
     }
 
@@ -78,12 +82,16 @@ impl MmapRing {
         let dest_slice = self.slice_mut();
 
         // Check for boundary crossing
-        assert!(end <= dest_slice.len(), "Append crosses buffer boundary - alignment issue?");
+        assert!(
+            end <= dest_slice.len(),
+            "Append crosses buffer boundary - alignment issue?"
+        );
 
         // Perform the write
         dest_slice[actual_offset..end].copy_from_slice(bytemuck::bytes_of(state));
 
-        self.write_index.store(current_pos + size, std::sync::atomic::Ordering::Release);
+        self.write_index
+            .store(current_pos + size, std::sync::atomic::Ordering::Release);
     }
 
     fn slice(&self) -> &[u8] {
