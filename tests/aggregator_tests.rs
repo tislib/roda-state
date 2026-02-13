@@ -28,7 +28,6 @@ pub struct GroupKey {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_count_and_sum() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -72,6 +71,9 @@ fn test_aggregator_count_and_sum() {
         ..Default::default()
     });
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     // Validate the final aggregated result by get_window from the target
     let res = target_reader.get_window::<2>(0).unwrap();
     assert_eq!(res[1].sensor_id, 1);
@@ -80,7 +82,6 @@ fn test_aggregator_count_and_sum() {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_min_max_tracking() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -134,6 +135,9 @@ fn test_aggregator_min_max_tracking() {
         ..Default::default()
     });
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     // Validate by get_window from the target
     let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[2].min, 5.0);
@@ -141,7 +145,6 @@ fn test_aggregator_min_max_tracking() {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_multiple_partitions() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -189,6 +192,9 @@ fn test_aggregator_multiple_partitions() {
         ..Default::default()
     });
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     // Validate by get_window all results
     let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].sensor_id, 1);
@@ -200,7 +206,6 @@ fn test_aggregator_multiple_partitions() {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_complex_key() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -240,13 +245,15 @@ fn test_aggregator_complex_key() {
         ..Default::default()
     });
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     let res = target_reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0].sensor_id, 1);
     assert_eq!(res[0].count, 1);
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_reset_behavior() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -293,6 +300,9 @@ fn test_aggregator_reset_behavior() {
         ..Default::default()
     });
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     // Validate get_window results: first 5 for sensor 1 with counts 1..5, then sensor 2 with count 1
     let res = target_reader.get_window::<6>(0).unwrap();
     for (i, item) in res.iter().enumerate().take(5) {
@@ -304,7 +314,6 @@ fn test_aggregator_reset_behavior() {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_large_index() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -342,6 +351,9 @@ fn test_aggregator_large_index() {
         });
     }
 
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
     // Validate all results
     let res = target_reader.get_window::<1000>(0).unwrap();
     for (i, item) in res.iter().enumerate().take(1000) {
@@ -350,7 +362,6 @@ fn test_aggregator_large_index() {
 }
 
 #[test]
-#[ignore]
 fn test_aggregator_worker_large() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
@@ -388,6 +399,9 @@ fn test_aggregator_worker_large() {
             ..Default::default()
         });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<1000>(0).unwrap();
     assert_eq!(res[999].count, 1000);

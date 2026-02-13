@@ -7,7 +7,7 @@ fn test_journal_panic_when_full() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u64>(StoreOptions {
         name: "full_test",
-        size: 16, // Can hold only 2 u64
+        size: 2, // Can hold only 2 u64
         in_memory: true,
     });
 
@@ -21,7 +21,7 @@ fn test_journal_no_circularity() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u64>(StoreOptions {
         name: "no_circular_test",
-        size: 16,
+        size: 2,
         in_memory: true,
     });
     let reader = store.reader();

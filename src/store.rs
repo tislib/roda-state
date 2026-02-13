@@ -2,6 +2,7 @@ use crate::components::{Store, StoreOptions, StoreReader};
 use crate::index::DirectIndex;
 use crate::storage::mmap_journal::MmapJournal;
 use bytemuck::Pod;
+use libc::read;
 use std::cell::Cell;
 use std::path::PathBuf;
 
@@ -15,15 +16,16 @@ pub struct StoreJournalReader {
 }
 
 impl StoreJournal {
-    pub fn new(root_path: &'static str, option: StoreOptions) -> Self {
+    pub fn new(root_path: &'static str, option: StoreOptions, state_size: usize) -> Self {
+        let total_size = option.size * state_size;
         let storage = if option.in_memory {
-            MmapJournal::new(None, option.size).unwrap()
+            MmapJournal::new(None, total_size).unwrap()
         } else {
             let path: PathBuf = format!("{}/{}.store", root_path, option.name).into();
             if path.exists() {
                 MmapJournal::load(path).unwrap()
             } else {
-                MmapJournal::new(Some(path), option.size).unwrap()
+                MmapJournal::new(Some(path), total_size).unwrap()
             }
         };
 
@@ -31,7 +33,7 @@ impl StoreJournal {
     }
 }
 
-impl<State: Pod + Send + Sync> Store<State> for StoreJournal {
+impl<State: Pod + Send> Store<State> for StoreJournal {
     type Reader = StoreJournalReader;
 
     fn push(&mut self, state: State) {
@@ -54,15 +56,18 @@ impl<State: Pod + Send + Sync> Store<State> for StoreJournal {
         }
     }
 
-    fn direct_index<Key: Pod + Ord + Send + Sync>(&self) -> DirectIndex<Key, State> {
+    fn direct_index<Key: Pod + Ord + Send>(&self) -> DirectIndex<Key, State, StoreJournalReader> {
         DirectIndex {
             map: std::sync::Arc::new(crossbeam_skiplist::SkipMap::new()),
-            reader: Box::new(Store::<State>::reader(self)),
+            reader: StoreJournalReader {
+                next_index: Cell::new(0),
+                storage: self.storage.reader(),
+            },
         }
     }
 }
 
-impl<State: Pod + Send + Sync> StoreReader<State> for StoreJournalReader {
+impl<State: Pod + Send> StoreReader<State> for StoreJournalReader {
     fn next(&self) -> bool {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();
@@ -75,6 +80,10 @@ impl<State: Pod + Send + Sync> StoreReader<State> for StoreJournalReader {
         self.next_index.set(index_to_read + 1);
 
         true
+    }
+
+    fn get_index(&self) -> usize {
+        self.next_index.get()
     }
 
     fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {

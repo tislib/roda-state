@@ -3,19 +3,19 @@ use bytemuck::Pod;
 use crossbeam_skiplist::SkipMap;
 use std::sync::Arc;
 
-pub struct DirectIndex<Key: Pod + Ord + Send + Sync, Value: Pod + Send + Sync> {
+pub struct DirectIndex<Key: Pod + Ord + Send, Value: Pod + Send, Reader: StoreReader<Value>> {
     pub(crate) map: Arc<SkipMap<Key, Value>>,
-    pub(crate) reader: Box<dyn StoreReader<Value>>,
+    pub reader: Reader,
 }
 
-pub struct DirectIndexReader<Key: Pod + Ord + Send + Sync, Value: Pod + Send + Sync> {
+pub struct DirectIndexReader<Key: Pod + Ord + Send, Value: Pod + Send> {
     pub(crate) map: Arc<SkipMap<Key, Value>>,
 }
 
-impl<Key, Value> Index<Key, Value> for DirectIndex<Key, Value>
+impl<Key, Value, Reader: StoreReader<Value>> Index<Key, Value> for DirectIndex<Key, Value, Reader>
 where
-    Key: Pod + Ord + Send + Sync,
-    Value: Pod + Send + Sync,
+    Key: Pod + Ord + Send,
+    Value: Pod + Send,
 {
     type Reader = DirectIndexReader<Key, Value>;
     fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
@@ -36,8 +36,8 @@ where
 
 impl<Key, Value> IndexReader<Key, Value> for DirectIndexReader<Key, Value>
 where
-    Key: Pod + Ord + Send + Sync,
-    Value: Pod + Send + Sync,
+    Key: Pod + Ord + Send,
+    Value: Pod + Send,
 {
     fn with<R>(&self, key: &Key, handler: impl FnOnce(&Value) -> R) -> Option<R> {
         self.map.get(key).map(|entry| handler(entry.value()))

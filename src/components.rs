@@ -9,19 +9,20 @@ pub struct StoreOptions {
 
 pub trait Engine {
     fn run_worker(&self, runnable: impl FnMut() + Send + 'static);
-    fn store<State: Pod + Send + Sync>(&self, options: StoreOptions)
+    fn store<State: Pod + Send>(&self, options: StoreOptions)
     -> impl Store<State> + 'static;
 }
 
-pub trait Store<State: Pod + Send + Sync>: Send {
+pub trait Store<State: Pod + Send>: Send {
     type Reader: StoreReader<State>;
     fn push(&mut self, state: State);
     fn reader(&self) -> Self::Reader;
-    fn direct_index<Key: Pod + Ord + Send + Sync>(&self) -> DirectIndex<Key, State>;
+    fn direct_index<Key: Pod + Ord + Send>(&self) -> DirectIndex<Key, State, Self::Reader>;
 }
 
-pub trait StoreReader<State: Pod + Send + Sync>: Send {
+pub trait StoreReader<State: Pod + Send>: Send {
     fn next(&self) -> bool;
+    fn get_index(&self) -> usize;
 
     fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>
     where
@@ -41,13 +42,13 @@ pub trait StoreReader<State: Pod + Send + Sync>: Send {
         Self: Sized;
 }
 
-pub trait Index<Key: Pod + Ord + Send + Sync, State: Pod + Send + Sync> {
+pub trait Index<Key: Pod + Ord + Send, State: Pod + Send> {
     type Reader: IndexReader<Key, State>;
     fn compute(&self, key_fn: impl FnOnce(&State) -> Key);
     fn reader(&self) -> Self::Reader;
 }
 
-pub trait IndexReader<Key: Pod + Ord + Send + Sync, State: Pod + Send + Sync> {
+pub trait IndexReader<Key: Pod + Ord + Send, State: Pod + Send> {
     fn with<R>(&self, key: &Key, handler: impl FnOnce(&State) -> R) -> Option<R>;
     fn get(&self, key: &Key) -> Option<State>;
 }

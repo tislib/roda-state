@@ -78,11 +78,10 @@ fn test_index_reader_with_and_get() {
 #[test]
 fn test_store_full_capacity() {
     let engine = RodaEngine::new();
-    let item_size = std::mem::size_of::<u64>();
     let num_items = 10;
     let mut store = engine.store::<u64>(StoreOptions {
         name: "full_capacity",
-        size: item_size * num_items,
+        size: num_items,
         in_memory: true,
     });
 
@@ -108,10 +107,9 @@ fn test_store_full_capacity() {
 #[should_panic(expected = "Store is full")]
 fn test_store_overflow_panic() {
     let engine = RodaEngine::new();
-    let item_size = std::mem::size_of::<u64>();
     let mut store = engine.store::<u64>(StoreOptions {
         name: "overflow",
-        size: item_size,
+        size: 1,
         in_memory: true,
     });
 
