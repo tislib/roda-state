@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
-pub(crate) struct MmapRing {
+pub(crate) struct MmapJournal {
     _mmap: Arc<MmapMut>,
     ptr: *mut u8,
     len: usize,
@@ -13,7 +13,7 @@ pub(crate) struct MmapRing {
     read_only: bool,
 }
 
-impl MmapRing {
+impl MmapJournal {
     /// CREATE: Creates a brand new file, truncating any existing data.
     pub fn new(path: Option<PathBuf>, total_size: usize) -> Result<Self, std::io::Error> {
         let mut mmap = if let Some(p) = &path {
@@ -64,23 +64,21 @@ impl MmapRing {
     ///
     /// Casts bytes at offset to a reference of T.
     pub fn read<T: Pod>(&self, offset: usize) -> &T {
-        let actual_offset = offset % self.len;
-        let end = actual_offset + size_of::<T>();
+        let end = offset + size_of::<T>();
         assert!(
             end <= self.len,
             "Read crosses buffer boundary - alignment issue?"
         );
-        bytemuck::from_bytes(&self.slice()[actual_offset..end])
+        bytemuck::from_bytes(&self.slice()[offset..end])
     }
 
     pub(crate) fn read_window<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
-        let actual_offset = offset % self.len;
-        let end = actual_offset + size_of::<T>() * N;
+        let end = offset + size_of::<T>() * N;
         assert!(
             end <= self.len,
             "Read crosses buffer boundary - alignment issue?"
         );
-        let bytes = &self.slice()[actual_offset..end];
+        let bytes = &self.slice()[offset..end];
 
         bytemuck::cast_slice(bytes)
     }
@@ -88,22 +86,21 @@ impl MmapRing {
     pub fn append<T: Pod>(&mut self, state: &T) {
         let current_pos = self.write_index.load(std::sync::atomic::Ordering::Relaxed);
         let size = size_of::<T>();
-        let actual_offset = current_pos % self.len;
-        let end = actual_offset + size;
+        let end = current_pos + size;
 
         let dest_slice = self.slice_mut();
 
         // Check for boundary crossing
         assert!(
             end <= dest_slice.len(),
-            "Append crosses buffer boundary - alignment issue?"
+            "Journal is full. Cannot append more data."
         );
 
         // Perform the write
-        dest_slice[actual_offset..end].copy_from_slice(bytemuck::bytes_of(state));
+        dest_slice[current_pos..end].copy_from_slice(bytemuck::bytes_of(state));
 
         self.write_index
-            .store(current_pos + size, std::sync::atomic::Ordering::Release);
+            .store(end, std::sync::atomic::Ordering::Release);
     }
 
     fn slice(&self) -> &[u8] {
@@ -123,8 +120,8 @@ impl MmapRing {
         self.len
     }
 
-    pub(crate) fn reader(&self) -> MmapRing {
-        MmapRing {
+    pub(crate) fn reader(&self) -> MmapJournal {
+        MmapJournal {
             _mmap: self._mmap.clone(),
             ptr: self.ptr,
             len: self.len,
@@ -134,4 +131,4 @@ impl MmapRing {
     }
 }
 
-unsafe impl Send for MmapRing {}
+unsafe impl Send for MmapJournal {}

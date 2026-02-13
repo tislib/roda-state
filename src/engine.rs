@@ -1,5 +1,5 @@
 use crate::components::{Engine, Store, StoreOptions};
-use crate::store::CircularStore;
+use crate::store::StoreJournal;
 use bytemuck::Pod;
 use std::thread;
 
@@ -17,7 +17,7 @@ impl Engine for RodaEngine {
     }
 
     fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static {
-        CircularStore::new(self.root_path, options)
+        StoreJournal::new(self.root_path, options)
     }
 }
 

@@ -42,21 +42,22 @@ Workers execute user pipelines in a continuous loop using an **Adaptive Backoff 
 
 ### 2.2 The Store (The Source of Truth)
 
-The `CircularRodaStore<T>` is a fixed-capacity circular buffer backed by memory-mapped files.
+The `StoreJournal<T>` is a fixed-capacity append-only buffer backed by memory-mapped files.
 
 * **Memory Layout:** `[ Header (Atomics) | Data Region (T...) | Padding ]`.
 * **Write Model:** **Single Writer**. Only one thread (the owner of the `Store` handle) can write, eliminating
   write-side contention.
-* **Read Model:** **Multiple Readers**. Each reader (or worker) uses an independent `CircularRodaStoreReader<T>` handle
+* **Read Model:** **Multiple Readers**. Each reader (or worker) uses an independent `StoreJournalReader<T>` handle
   that maintains its own
   state (cursor).
 * **Addressing:** Data is addressed by a monotonic `u64` sequence number (`Cursor`). The physical address is
-  `(Cursor % Capacity) * sizeof(T)`.
+  `Cursor * sizeof(T)`.
+* **Full Buffer Policy:** If the store is full, it will panic on the next `push`. No wrapping or overwriting occurs.
 
 ### 2.3 StoreReader & Traits
 
 Roda uses traits to define the behavior of stores and readers, allowing for different implementations (like the default
-`CircularRodaStore`).
+`StoreJournal`).
 
 * **Store Trait:** Defines `push`, `reader`, and `direct_index`.
 * **StoreReader Trait:** Defines `next`, `with`, `with_at`, `with_last`, `get`, `get_at`, `get_last`, and `get_window`.
@@ -115,7 +116,7 @@ To guarantee performance and zero-copy safety, Roda imposes several constraints:
 
 Synchronization is achieved without locks using `Acquire/Release` semantics:
 
-* **Writer:** `buffer[cursor % cap] = data; cursor.store(new_val, Release);`
+* **Writer:** `buffer[cursor] = data; cursor.store(new_val, Release);`
 * **Reader:** `while cursor.load(Acquire) > local_cursor { process(); local_cursor++; }`
 
 This ensures that when the reader sees the updated cursor, it is guaranteed to see the data written by the writer.
