@@ -8,7 +8,9 @@ pub struct Aggregator<InValue: Pod, OutValue: Pod, PartitionKey = ()> {
     pub(crate) _partition_key: PhantomData<PartitionKey>,
 }
 
-impl<InValue: Pod, OutValue: Pod + Send, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+impl<InValue: Pod, OutValue: Pod + Send + Sync, PartitionKey>
+    Aggregator<InValue, OutValue, PartitionKey>
+{
     pub fn to(
         &self,
         _p0: &mut impl Store<OutValue>,
@@ -17,7 +19,9 @@ impl<InValue: Pod, OutValue: Pod + Send, PartitionKey> Aggregator<InValue, OutVa
     }
 }
 
-impl<InValue: Pod + Send, OutValue: Pod, PartitionKey> Aggregator<InValue, OutValue, PartitionKey> {
+impl<InValue: Pod + Send + Sync, OutValue: Pod, PartitionKey>
+    Aggregator<InValue, OutValue, PartitionKey>
+{
     pub fn from(
         &self,
         _p0: &impl StoreReader<InValue>,
@@ -44,7 +48,7 @@ impl<InValue: Pod, OutValue: Pod, PartitionKey> Default
     }
 }
 
-impl<InValue: Pod + Send, OutValue: Pod + Send, PartitionKey>
+impl<InValue: Pod + Send + Sync, OutValue: Pod + Send + Sync, PartitionKey>
     Aggregator<InValue, OutValue, PartitionKey>
 {
     pub fn pipe(_source: impl Store<InValue>, _target: impl Store<OutValue>) -> Self {

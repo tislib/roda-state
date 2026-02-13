@@ -31,15 +31,18 @@ impl StoreJournal {
     }
 }
 
-impl<State: Pod + Send> Store<State> for StoreJournal {
+impl<State: Pod + Send + Sync> Store<State> for StoreJournal {
     type Reader = StoreJournalReader;
 
     fn push(&mut self, state: State) {
+        let size = size_of::<State>();
+        let current_pos = self.storage.get_write_index();
         assert!(
-            self.storage.len() >= size_of::<State>(),
-            "Store size {} is too small for State size {}",
+            current_pos + size <= self.storage.len(),
+            "Store is full. Capacity: {}, Current position: {}, State size: {}",
             self.storage.len(),
-            size_of::<State>()
+            current_pos,
+            size
         );
         self.storage.append(&state);
     }
@@ -51,15 +54,15 @@ impl<State: Pod + Send> Store<State> for StoreJournal {
         }
     }
 
-    fn direct_index<Key: Pod>(&self) -> DirectIndex<Key, State> {
+    fn direct_index<Key: Pod + Ord + Send + Sync>(&self) -> DirectIndex<Key, State> {
         DirectIndex {
-            _k: std::marker::PhantomData,
-            _v: std::marker::PhantomData,
+            map: std::sync::Arc::new(crossbeam_skiplist::SkipMap::new()),
+            reader: Box::new(Store::<State>::reader(self)),
         }
     }
 }
 
-impl<State: Pod + Send> StoreReader<State> for StoreJournalReader {
+impl<State: Pod + Send + Sync> StoreReader<State> for StoreJournalReader {
     fn next(&self) -> bool {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();

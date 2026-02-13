@@ -2,7 +2,7 @@ use roda_state::RodaEngine;
 use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
 
 #[test]
-#[should_panic(expected = "Journal is full. Cannot append more data.")]
+#[should_panic(expected = "Store is full")]
 fn test_journal_panic_when_full() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u64>(StoreOptions {

@@ -26,7 +26,7 @@ pub struct OHLC {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy, Default, Pod, Zeroable, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeKey {
     pub symbol: u64,
     pub timestamp: u64,

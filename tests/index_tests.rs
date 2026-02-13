@@ -5,14 +5,13 @@ use std::thread;
 use std::time::Duration;
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Pod, Zeroable)]
 struct ComplexKey {
     id: u32,
     category: u32,
 }
 
 #[test]
-#[ignore]
 fn test_index_multiple_values() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -38,7 +37,6 @@ fn test_index_multiple_values() {
 }
 
 #[test]
-#[ignore]
 fn test_multiple_indices_on_same_store() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -63,7 +61,6 @@ fn test_multiple_indices_on_same_store() {
 }
 
 #[test]
-#[ignore]
 fn test_index_complex_key() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -97,7 +94,6 @@ fn test_index_complex_key() {
 }
 
 #[test]
-#[ignore]
 fn test_index_shallow_clone_sharing() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -117,7 +113,6 @@ fn test_index_shallow_clone_sharing() {
 }
 
 #[test]
-#[ignore]
 fn test_index_collision_overwrite() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -140,7 +135,6 @@ fn test_index_collision_overwrite() {
 }
 
 #[test]
-#[ignore]
 fn test_index_not_found() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -159,7 +153,6 @@ fn test_index_not_found() {
 }
 
 #[test]
-#[ignore]
 fn test_concurrent_push_and_index() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -193,7 +186,6 @@ fn test_concurrent_push_and_index() {
 }
 
 #[test]
-#[ignore]
 fn test_run_worker_with_multiple_stores() {
     let engine = RodaEngine::new();
     let mut store_u32 = engine.store::<u32>(StoreOptions {
@@ -214,19 +206,28 @@ fn test_run_worker_with_multiple_stores() {
     let index_u32_reader = index_u32.reader();
     let index_string_reader = index_string.reader();
 
-    engine.run_worker(move || {
+    for _ in 0..10 {
         store_u32.push(100);
+    }
+
+    let mut pushed_u32 = false;
+    engine.run_worker(move || {
+        if !pushed_u32 {
+            store_u32.push(100);
+            pushed_u32 = true;
+        }
         index_u32.compute(|&x| x);
     });
 
+    let mut pushed_string = false;
     engine.run_worker(move || {
-        let mut bytes = [0u8; 16];
-        bytes[..5].copy_from_slice(b"hello");
-        store_string.push(bytes);
-        index_string.compute(|s: &[u8; 16]| {
-            let len = s.iter().take_while(|&&b| b != 0).count();
-            len
-        });
+        if !pushed_string {
+            let mut bytes = [0u8; 16];
+            bytes[..5].copy_from_slice(b"hello");
+            store_string.push(bytes);
+            pushed_string = true;
+        }
+        index_string.compute(|s: &[u8; 16]| s.iter().take_while(|&&b| b != 0).count());
     });
 
     // Wait for workers
@@ -238,7 +239,6 @@ fn test_run_worker_with_multiple_stores() {
 }
 
 #[test]
-#[ignore]
 fn test_multiple_workers_reading_index_only_original_computes() {
     let engine = RodaEngine::new();
     let mut store = engine.store::<u32>(StoreOptions {
@@ -264,20 +264,4 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 
     assert_eq!(reader1.get(&10), Some(1));
     assert_eq!(reader2.get(&20), Some(2));
-}
-
-#[test]
-#[ignore]
-fn test_reader_cannot_compute() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
-        name: "test",
-        size: 1024,
-        in_memory: true,
-    });
-    let index = store.direct_index::<u32>();
-    let _reader = index.reader();
-
-    // Verification: This test is now a compile-time check.
-    // Readers do not have a .compute() method.
 }

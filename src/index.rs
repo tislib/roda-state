@@ -1,34 +1,49 @@
-use crate::components::{Index, IndexReader};
+use crate::components::{Index, IndexReader, StoreReader};
 use bytemuck::Pod;
-use std::marker::PhantomData;
+use crossbeam_skiplist::SkipMap;
+use std::sync::Arc;
 
-pub struct DirectIndex<Key: Pod, Value: Pod> {
-    pub(crate) _k: PhantomData<Key>,
-    pub(crate) _v: PhantomData<Value>,
+pub struct DirectIndex<Key: Pod + Ord + Send + Sync, Value: Pod + Send + Sync> {
+    pub(crate) map: Arc<SkipMap<Key, Value>>,
+    pub(crate) reader: Box<dyn StoreReader<Value>>,
 }
 
-pub struct RodaDirectIndexReader<Key: Pod, Value: Pod> {
-    pub(crate) _k: PhantomData<Key>,
-    pub(crate) _v: PhantomData<Value>,
+pub struct DirectIndexReader<Key: Pod + Ord + Send + Sync, Value: Pod + Send + Sync> {
+    pub(crate) map: Arc<SkipMap<Key, Value>>,
 }
 
-impl<Key: Pod, Value: Pod> Index<Key, Value> for DirectIndex<Key, Value> {
-    type Reader = RodaDirectIndexReader<Key, Value>;
-    fn compute(&self, _key_fn: impl FnOnce(&Value) -> Key) {
-        todo!()
+impl<Key, Value> Index<Key, Value> for DirectIndex<Key, Value>
+where
+    Key: Pod + Ord + Send + Sync,
+    Value: Pod + Send + Sync,
+{
+    type Reader = DirectIndexReader<Key, Value>;
+    fn compute(&self, key_fn: impl FnOnce(&Value) -> Key) {
+        if self.reader.next()
+            && let Some(value) = self.reader.get()
+        {
+            let key = key_fn(&value);
+            self.map.insert(key, value);
+        }
     }
 
-    fn reader(&self) -> RodaDirectIndexReader<Key, Value> {
-        todo!()
+    fn reader(&self) -> DirectIndexReader<Key, Value> {
+        DirectIndexReader {
+            map: self.map.clone(),
+        }
     }
 }
 
-impl<Key: Pod, Value: Pod> IndexReader<Key, Value> for RodaDirectIndexReader<Key, Value> {
-    fn with<R>(&self, _key: &Key, _handler: impl FnOnce(&Value) -> R) -> Option<R> {
-        todo!()
+impl<Key, Value> IndexReader<Key, Value> for DirectIndexReader<Key, Value>
+where
+    Key: Pod + Ord + Send + Sync,
+    Value: Pod + Send + Sync,
+{
+    fn with<R>(&self, key: &Key, handler: impl FnOnce(&Value) -> R) -> Option<R> {
+        self.map.get(key).map(|entry| handler(entry.value()))
     }
 
-    fn get(&self, _key: &Key) -> Option<Value> {
-        todo!()
+    fn get(&self, key: &Key) -> Option<Value> {
+        self.map.get(key).map(|entry| *entry.value())
     }
 }

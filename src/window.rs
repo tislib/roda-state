@@ -7,7 +7,7 @@ pub struct Window<InValue, OutValue = ()> {
     pub(crate) _out_v: PhantomData<OutValue>,
 }
 
-impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
+impl<InValue: Pod + Send + Sync, OutValue: Pod + Send + Sync> Window<InValue, OutValue> {
     pub fn from<Reader: StoreReader<InValue>>(
         &self,
         _reader: &Reader,
@@ -35,7 +35,7 @@ impl<InValue, OutValue> Default for Window<InValue, OutValue> {
     }
 }
 
-impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
+impl<InValue: Pod + Send + Sync, OutValue: Pod + Send + Sync> Window<InValue, OutValue> {
     pub fn pipe(source: impl StoreReader<InValue>, target: impl Store<OutValue>) -> Self {
         let _ = source;
         let _ = target;

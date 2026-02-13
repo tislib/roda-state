@@ -12,6 +12,7 @@ bytemuck = {version = "1.25.0", features = ["derive"]}
 memmap2 = "0.9.9"
 thiserror = "2.0.18"
 crossbeam-utils = "0.8.21"
+crossbeam-skiplist = "0.1"
 libc = "0.2" # Needed for mlock (memory pinning) and sched_setaffinity
 
 [dev-dependencies]

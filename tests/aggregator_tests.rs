@@ -295,9 +295,9 @@ fn test_aggregator_reset_behavior() {
 
     // Validate get_window results: first 5 for sensor 1 with counts 1..5, then sensor 2 with count 1
     let res = target_reader.get_window::<6>(0).unwrap();
-    for i in 0..5 {
-        assert_eq!(res[i].sensor_id, 1);
-        assert_eq!(res[i].count, (i as u32) + 1);
+    for (i, item) in res.iter().enumerate().take(5) {
+        assert_eq!(item.sensor_id, 1);
+        assert_eq!(item.count, (i as u32) + 1);
     }
     assert_eq!(res[5].sensor_id, 2);
     assert_eq!(res[5].count, 1);
@@ -319,7 +319,7 @@ fn test_aggregator_large_index() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
+    let aggregator: Aggregator<SensorReading, SensorStats, u16> = Aggregator::new();
 
     // Run aggregation inside worker
     engine.run_worker(move || {
@@ -344,18 +344,14 @@ fn test_aggregator_large_index() {
 
     // Validate all results
     let res = target_reader.get_window::<1000>(0).unwrap();
-    for i in 0..1000usize {
-        assert_eq!(res[i].count, (i as u32) + 1);
+    for (i, item) in res.iter().enumerate().take(1000) {
+        assert_eq!(item.count, (i as u32) + 1);
     }
 }
 
 #[test]
 #[ignore]
 fn test_aggregator_worker_large() {
-    use std::sync::{Arc, Mutex};
-    use std::thread;
-    use std::time::Duration;
-
     let engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
         name: "source",

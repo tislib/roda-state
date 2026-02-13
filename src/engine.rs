@@ -16,7 +16,10 @@ impl Engine for RodaEngine {
         });
     }
 
-    fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static {
+    fn store<State: Pod + Send + Sync>(
+        &self,
+        options: StoreOptions,
+    ) -> impl Store<State> + 'static {
         StoreJournal::new(self.root_path, options)
     }
 }
