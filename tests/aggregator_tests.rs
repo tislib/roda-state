@@ -363,7 +363,7 @@ fn test_aggregator_large_index() {
 
 #[test]
 fn test_aggregator_worker_large() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<SensorReading>(StoreOptions {
         name: "source",
         size: 2000,

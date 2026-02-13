@@ -54,7 +54,7 @@ pub struct Alert {
 }
 
 fn main() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
 
     // 1. SETUP STORES
     // Stores are bounded, pre-allocated buffers for your state.

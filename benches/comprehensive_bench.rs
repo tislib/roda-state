@@ -1,6 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use roda_state::components::{Engine, Index, IndexReader, Store, StoreOptions, StoreReader};
+use roda_state::measure::LatencyMeasurer;
 use roda_state::{Aggregator, RodaEngine, Window};
 
 #[derive(Clone, Copy, Zeroable, Pod, Default)]
@@ -42,8 +43,10 @@ fn bench_index(c: &mut Criterion) {
 
     let index = store.direct_index::<u32>();
 
+    let mut measurer = LatencyMeasurer::new(1000);
     group.bench_function("index_compute_10k", |b| {
         b.iter(|| {
+            let _latency_guard = measurer.measure_with_guard();
             let reader = store.reader();
             let index = store.direct_index::<u32>();
             while reader.next() {
@@ -51,6 +54,7 @@ fn bench_index(c: &mut Criterion) {
             }
         });
     });
+    println!("index_compute_10k latency:{}", measurer.format_stats());
 
     // Pre-compute index for lookup bench
     let reader = store.reader();
@@ -59,14 +63,18 @@ fn bench_index(c: &mut Criterion) {
     }
     let index_reader = index.reader();
 
+    let mut measurer = LatencyMeasurer::new(1000);
     group.bench_function("index_lookup", |b| {
         let mut i = 0u32;
         b.iter(|| {
+            let _latency_guard = measurer.measure_with_guard();
             black_box(index_reader.get(&(i % 10000)));
             i += 1;
         });
     });
+    println!("index_lookup latency:{}", measurer.format_stats());
 
+    let mut measurer = LatencyMeasurer::new(1000);
     group.bench_function("index_incremental_compute", |b| {
         let mut i = 10000u32;
         let reader = store.reader();
@@ -76,6 +84,7 @@ fn bench_index(c: &mut Criterion) {
         }
 
         b.iter(|| {
+            let _latency_guard = measurer.measure_with_guard();
             store.push(RawData {
                 id: i,
                 value: i as f64,
@@ -86,6 +95,7 @@ fn bench_index(c: &mut Criterion) {
             i += 1;
         });
     });
+    println!("index_incremental_compute latency:{}", measurer.format_stats());
 
     group.finish();
 }
@@ -109,11 +119,13 @@ fn bench_aggregator(c: &mut Criterion) {
         let source_reader = source.reader();
         let aggregator: Aggregator<RawData, AggregatedData, u32> = Aggregator::new();
 
+        let mut measurer = LatencyMeasurer::new(1000);
         group.bench_function(
             format!("aggregator_reduce_step_{}_partitions", num_partitions),
             |b| {
                 let mut i = 0u32;
                 b.iter(|| {
+                    let _latency_guard = measurer.measure_with_guard();
                     source.push(RawData {
                         id: i % num_partitions,
                         value: 1.0,
@@ -132,6 +144,11 @@ fn bench_aggregator(c: &mut Criterion) {
                     i += 1;
                 });
             },
+        );
+        println!(
+            "aggregator_reduce_step_{}_partitions latency:{}",
+            num_partitions,
+            measurer.format_stats()
         );
     }
 
@@ -158,9 +175,11 @@ fn bench_window(c: &mut Criterion) {
     let window: Window<RawData, RawData> = Window::new();
 
     for window_size in [10, 100] {
+        let mut measurer = LatencyMeasurer::new(1000);
         group.bench_function(format!("window_reduce_size_{}", window_size), |b| {
             let mut i = 0u32;
             b.iter(|| {
+                let _latency_guard = measurer.measure_with_guard();
                 source.push(RawData {
                     id: i,
                     value: i as f64,
@@ -181,6 +200,11 @@ fn bench_window(c: &mut Criterion) {
                 i += 1;
             });
         });
+        println!(
+            "window_reduce_size_{} latency:{}",
+            window_size,
+            measurer.format_stats()
+        );
     }
 
     group.finish();
@@ -213,9 +237,11 @@ fn bench_mixed(c: &mut Criterion) {
     let aggregator: Aggregator<RawData, AggregatedData, u32> = Aggregator::new();
     let window: Window<AggregatedData, AggregatedData> = Window::new();
 
-    group.bench_function("mixed_push_agg_window", |b| {
+    let mut measurer = LatencyMeasurer::new(1000);
+    group.bench_function("mixed_pipeline", |b| {
         let mut i = 0u32;
         b.iter(|| {
+            let _latency_guard = measurer.measure_with_guard();
             // Push to S1
             s1.push(RawData {
                 id: i % 10,
@@ -250,6 +276,7 @@ fn bench_mixed(c: &mut Criterion) {
             i += 1;
         });
     });
+    println!("mixed_pipeline latency:{}", measurer.format_stats());
 
     group.finish();
 }

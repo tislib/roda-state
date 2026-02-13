@@ -18,7 +18,7 @@ pub struct Analysis {
 
 #[test]
 fn test_window_filling_and_sliding() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 10,
@@ -74,7 +74,7 @@ fn test_window_filling_and_sliding() {
 
 #[test]
 fn test_window_size_one() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 10,
@@ -124,7 +124,7 @@ fn test_window_size_one() {
 
 #[test]
 fn test_window_large_sliding() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 100,
@@ -181,7 +181,7 @@ fn test_window_large_sliding() {
 
 #[test]
 fn test_window_worker_large() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 2000,
@@ -232,7 +232,7 @@ fn test_window_worker_large() {
 
 #[test]
 fn test_window_max_value() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 10,
@@ -275,7 +275,7 @@ fn test_window_max_value() {
 fn test_window_all_none_until_full() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
         name: "source",
         size: 10,

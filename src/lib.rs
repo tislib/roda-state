@@ -5,6 +5,7 @@ pub mod index;
 mod storage;
 pub mod store;
 pub mod window;
+pub mod measure;
 
 pub use crate::aggregator::Aggregator;
 pub use crate::engine::RodaEngine;

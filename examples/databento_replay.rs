@@ -4,14 +4,13 @@ use std::time::Instant;
 
 use bytemuck::{Pod, Zeroable};
 use clap::Parser;
-use dbn::decode::{DbnDecoder as Decoder, DbnMetadata, DecodeRecordRef};
-use dbn::enums::{Action, rtype, Side, SType};
+use dbn::decode::{DbnDecoder as Decoder, DecodeRecordRef};
+use dbn::enums::{Action, rtype, Side};
 use dbn::record::MboMsg;
 use dbn::Record;
-use dbn::SymbolIndex;
 
 // Use your specific high-level API modules
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
+use roda_state::components::{Engine, Index, Store, StoreOptions, StoreReader};
 use roda_state::{RodaEngine, Window};
 
 // ==============================================================================
@@ -52,8 +51,6 @@ struct OrderInfo {
 struct Args {
     #[arg(long)]
     file: PathBuf,
-    #[arg(long, default_value = "NVDA")]
-    symbol: String,
 }
 
 // ==============================================================================
@@ -64,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     println!("[System] Booting Roda Showcase (Declarative Mode)...");
 
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
 
     // A. RESOURCES
     // --------------------------------------------------------------------------
@@ -77,7 +74,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let market_reader = market_store.reader();
 
     // We create an index to look up BBO by Instrument ID
-    let _market_index = market_store.direct_index::<u32>();
+    // We will use this for partitioning later
+    // let _market_index = market_store.direct_index::<u32>();
 
     // 2. Signal Store (The Output of our Strategy)
     let mut signal_store = engine.store::<TradeSignal>(StoreOptions {
@@ -134,6 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             });
     });
 
+    // 3. Partitioning: we can use direct index to partition by symbol
+    let market_index = market_store.direct_index::<u32>();
+    engine.run_worker(move || {
+        market_index.compute(|bbo| bbo.instrument_id);
+    });
+
     // --- WORKER 2: FEED HANDLER (The Data Source) ---
     // Since this reads from a File (Zstd) and not a Roda Store,
     // we run it as the "Driver" on the main thread (or a separate spawn).
@@ -146,79 +150,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Setup Decoder
     let mut decoder = Decoder::from_zstd_file(&args.file)?;
 
-    // 2. Resolve Symbology
-    let metadata = decoder.metadata();
-    // Prefer robust mapping using metadata symbol map for the start date
-    let date = metadata.start().date();
-    let pit_map = metadata.symbol_map_for_date(date)?;
-    // Find instrument_id for the requested symbol
-    let mut target_id_opt = pit_map
-        .inner()
-        .iter()
-        .find_map(|(iid, sym)| if sym == &args.symbol { Some(*iid) } else { None });
-
-    if target_id_opt.is_none() {
-        // Fallback: resolve via mappings depending on stype_in/out
-        target_id_opt = match (metadata.stype_in, metadata.stype_out) {
-            (Some(SType::RawSymbol), SType::InstrumentId) => metadata
-                .mappings
-                .iter()
-                .find(|m| m.raw_symbol == args.symbol)
-                .and_then(|m| m.intervals.first())
-                .and_then(|i| i.symbol.parse::<u32>().ok()),
-            (Some(SType::InstrumentId), SType::RawSymbol) => metadata
-                .mappings
-                .iter()
-                .find_map(|m| {
-                    if m.intervals.iter().any(|iv| iv.symbol == args.symbol) {
-                        m.raw_symbol.parse::<u32>().ok()
-                    } else {
-                        None
-                    }
-                }),
-            _ => None,
-        };
-    }
-
-    // Final fallback: if still not found, try instrument defs; if still not found, pick first symbol in map
-    let (target_id, resolved_symbol) = if let Some(id) = target_id_opt {
-        (id, args.symbol.clone())
-    } else {
-        let mut resolver = Decoder::from_zstd_file(&args.file)?;
-        let mut found: Option<u32> = None;
-        while let Some(rec) = resolver.decode_record_ref()? {
-            if rec.header().rtype == rtype::INSTRUMENT_DEF {
-                if let Ok(def) = rec.try_get::<dbn::record::InstrumentDefMsg>() {
-                    if let Ok(sym) = dbn::record::c_chars_to_str(&def.raw_symbol) {
-                        if sym == args.symbol {
-                            found = Some(def.hd.instrument_id);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if let Some(id) = found {
-            (id, args.symbol.clone())
-        } else {
-            // Last resort: pick first available symbol from the map
-            if let Some((iid, sym)) = pit_map.inner().iter().next() {
-                eprintln!(
-                    "[Writer] Warning: symbol '{}' not found. Falling back to '{}' (iid={}).",
-                    args.symbol, sym, iid
-                );
-                (*iid, sym.clone())
-            } else {
-                panic!("Symbol not found and no mappings available")
-            }
-        }
-    };
-
-    println!("[Writer] Mapped {} -> ID {}", resolved_symbol, target_id);
-
     // 3. Local State (Order Book Reconstruction)
-    let mut book = HashMap::<u64, OrderInfo>::new();
-    let mut last_bbo = (0i64, i64::MAX); // Bid, Ask
+    let mut books = HashMap::<u32, HashMap<u64, OrderInfo>>::new();
+    let mut last_bbos = HashMap::<u32, (i64, i64)>::new(); // instrument_id -> (Bid, Ask)
 
     // 4. Hot Loop
     while let Some(record) = decoder.decode_record_ref()? {
@@ -227,9 +161,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let msg = record.get::<MboMsg>().unwrap();
-        if msg.hd.instrument_id != target_id {
-            continue;
-        }
+        let instrument_id = msg.hd.instrument_id;
+
+        let book = books.entry(instrument_id).or_default();
+        let last_bbo = last_bbos.entry(instrument_id).or_insert((0i64, i64::MAX));
 
         let action = Action::try_from(msg.action as u8).unwrap_or(Action::None);
         let side = Side::try_from(msg.side as u8).unwrap_or(Side::None);
@@ -264,12 +199,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Compute BBO and Push to Roda Store
         if changed {
-            let (bid, ask, b_sz, a_sz) = compute_bbo(&book);
+            let (bid, ask, b_sz, a_sz) = compute_bbo(book);
 
             if bid != last_bbo.0 || ask != last_bbo.1 {
                 let update = BboUpdate {
                     ts: msg.hd.ts_event,
-                    instrument_id: target_id,
+                    instrument_id,
                     bid_px: bid,
                     ask_px: ask,
                     bid_sz: b_sz,
@@ -277,7 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     _pad0: 0,
                 };
                 market_store.push(update);
-                last_bbo = (bid, ask);
+                *last_bbo = (bid, ask);
                 count += 1;
             }
         }
