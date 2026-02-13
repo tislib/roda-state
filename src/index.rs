@@ -32,6 +32,10 @@ where
             map: self.map.clone(),
         }
     }
+
+    fn iter(&self) -> impl Iterator<Item = (Key, Value)> + '_ {
+        self.map.iter().map(|entry| (*entry.key(), *entry.value()))
+    }
 }
 
 impl<Key, Value> IndexReader<Key, Value> for DirectIndexReader<Key, Value>
@@ -45,5 +49,9 @@ where
 
     fn get(&self, key: &Key) -> Option<Value> {
         self.map.get(key).map(|entry| *entry.value())
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (Key, Value)> + '_ {
+        self.map.iter().map(|entry| (*entry.key(), *entry.value()))
     }
 }

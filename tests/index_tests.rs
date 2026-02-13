@@ -265,3 +265,30 @@ fn test_multiple_workers_reading_index_only_original_computes() {
     assert_eq!(reader1.get(&10), Some(1));
     assert_eq!(reader2.get(&20), Some(2));
 }
+
+#[test]
+fn test_index_iterator() {
+    let engine = RodaEngine::new();
+    let mut store = engine.store::<u32>(StoreOptions {
+        name: "test",
+        size: 1024,
+        in_memory: true,
+    });
+    let index = store.direct_index::<u32>();
+
+    for i in 0..5 {
+        store.push(i);
+        index.compute(|&x| x * 2);
+    }
+
+    let reader = index.reader();
+    let items: Vec<_> = reader.iter().collect();
+
+    assert_eq!(items.len(), 5);
+    let expected = vec![(0, 0), (2, 1), (4, 2), (6, 3), (8, 4)];
+    assert_eq!(items, expected);
+
+    // Test Index::iter too
+    let items_from_index: Vec<_> = index.iter().collect();
+    assert_eq!(items_from_index, expected);
+}

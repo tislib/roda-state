@@ -45,9 +45,11 @@ pub trait Index<Key: Pod + Ord + Send, State: Pod + Send> {
     type Reader: IndexReader<Key, State>;
     fn compute(&self, key_fn: impl FnOnce(&State) -> Key);
     fn reader(&self) -> Self::Reader;
+    fn iter(&self) -> impl Iterator<Item = (Key, State)> + '_;
 }
 
 pub trait IndexReader<Key: Pod + Ord + Send, State: Pod + Send> {
     fn with<R>(&self, key: &Key, handler: impl FnOnce(&State) -> R) -> Option<R>;
     fn get(&self, key: &Key) -> Option<State>;
+    fn iter(&self) -> impl Iterator<Item = (Key, State)> + '_;
 }
