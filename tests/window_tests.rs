@@ -17,7 +17,6 @@ pub struct Analysis {
 }
 
 #[test]
-#[ignore]
 fn test_window_filling_and_sliding() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
@@ -32,7 +31,7 @@ fn test_window_filling_and_sliding() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     // Run window reduce inside worker
     engine.run_worker(move || {
@@ -57,11 +56,11 @@ fn test_window_filling_and_sliding() {
 
     // Push data points
     for i in 1..=5 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     // Validate by get_window all outputs (5 - 3 + 1 = 3)
     let res = target_reader.get_window::<3>(0).unwrap();
@@ -74,7 +73,6 @@ fn test_window_filling_and_sliding() {
 }
 
 #[test]
-#[ignore]
 fn test_window_size_one() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
@@ -89,7 +87,7 @@ fn test_window_size_one() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     engine.run_worker(move || {
         source_reader.next();
@@ -109,11 +107,11 @@ fn test_window_size_one() {
 
     // Push values
     for v in [10.0, 20.0, 30.0] {
-        source.push(DataPoint {
-            value: v,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: v });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].average, 10.0);
@@ -125,7 +123,6 @@ fn test_window_size_one() {
 }
 
 #[test]
-#[ignore]
 fn test_window_large_sliding() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
@@ -140,7 +137,7 @@ fn test_window_large_sliding() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     engine.run_worker(move || {
         source_reader.next();
@@ -167,11 +164,11 @@ fn test_window_large_sliding() {
 
     // Push values 0..11 -> expect 3 outputs
     for i in 0..12 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0].average, 4.5);
@@ -183,7 +180,6 @@ fn test_window_large_sliding() {
 }
 
 #[test]
-#[ignore]
 fn test_window_worker_large() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
@@ -198,7 +194,7 @@ fn test_window_worker_large() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     engine.run_worker(move || {
         source_reader.next();
@@ -223,11 +219,11 @@ fn test_window_worker_large() {
     });
 
     for i in 0..1000 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<991>(0).unwrap();
     assert_eq!(res[0].average, 4.5); // (0+1+2+3+4+5+6+7+8+9)/10 = 45/10 = 4.5
@@ -235,7 +231,6 @@ fn test_window_worker_large() {
 }
 
 #[test]
-#[ignore]
 fn test_window_max_value() {
     let engine = RodaEngine::new();
     let mut source = engine.store::<DataPoint>(StoreOptions {
@@ -250,7 +245,7 @@ fn test_window_max_value() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     engine.run_worker(move || {
         source_reader.next();
@@ -264,11 +259,11 @@ fn test_window_max_value() {
 
     // Push values: expect maxima per 3-sized window
     for v in [1.0, 3.0, 2.0, 5.0, 4.0] {
-        source.push(DataPoint {
-            value: v,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: v });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<3>(0).unwrap();
     assert_eq!(res[0], 3.0);
@@ -277,7 +272,6 @@ fn test_window_max_value() {
 }
 
 #[test]
-#[ignore]
 fn test_window_all_none_until_full() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -294,7 +288,7 @@ fn test_window_all_none_until_full() {
     });
     let source_reader = source.reader();
     let target_reader = target.reader();
-    let mut pipeline = Window::new();
+    let pipeline = Window::new();
 
     let call_count = Arc::new(AtomicUsize::new(0));
     let cc = call_count.clone();
@@ -310,11 +304,11 @@ fn test_window_all_none_until_full() {
     });
 
     for i in 0..5 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
+
+    // Give some time for the worker to process
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     let res = target_reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0], 1);

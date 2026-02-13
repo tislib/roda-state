@@ -15,7 +15,7 @@ fn bench_push(c: &mut Criterion) {
     let mut group = c.benchmark_group("push");
 
     // 1GB buffer to ensure we don't overflow during benchmarking
-    let size = 1024 * 1024 * 1024;
+    let size = 16 * 1024 * 1024 * 1024;
     let mut store_u64 = engine.store::<u64>(StoreOptions {
         name: "bench_push_u64",
         size,

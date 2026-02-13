@@ -105,15 +105,14 @@ fn test_store_reader_get_last_no_alloc() {
 }
 
 #[test]
-fn test_store_direct_index_no_alloc() {
+fn test_store_direct_index_allocations_allowed() {
     let engine = RodaEngine::new();
     let store = engine.store::<u32>(StoreOptions {
-        name: "no_alloc_direct_index",
+        name: "direct_index_alloc",
         size: 1024,
         in_memory: true,
     });
 
-    assert_no_alloc(|| {
-        let _ = store.direct_index::<u64>();
-    });
+    // direct_index now allocates because it uses crossbeam-skiplist
+    let _ = store.direct_index::<u64>();
 }

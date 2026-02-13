@@ -11,7 +11,7 @@ HFT, market microstructure research, telemetry, and any workload where microseco
 
 ## Why Roda?
 
-- Deterministic performance: Explicit store sizes, preallocated ring buffers, back-pressure free write path by design goals.
+- Deterministic performance: Explicit store sizes, preallocated buffers, back-pressure free write path by design goals.
 - Low latency by construction: Reader APIs are designed for zero/constant allocations and predictable access patterns.
 - Declarative pipelines: Express processing in terms of partitions, reductions, and sliding windows.
 - Indexable state: Build direct indexes for O(1) lookups into rolling state.
@@ -20,7 +20,7 @@ HFT, market microstructure research, telemetry, and any workload where microseco
 ## Core Concepts
 
 - **Engine:** Orchestrates workers (long-lived tasks) that advance your pipelines.
-- **Store<T>:** A bounded, cache-friendly ring buffer that holds your state. You choose the capacity up front.
+- **Store<T>:** A bounded, cache-friendly append-only buffer that holds your state. You choose the capacity up front.
     - `push(value)`: Append a new item (typically by a single writer thread).
     - `reader()`: Returns a `StoreReader` view appropriate for consumers.
     - `direct_index<Key>()`: Build a secondary index over the store.
@@ -60,7 +60,7 @@ Roda is designed as a **Shared-Memory, Single-Writer Multi-Reader (SWMR)** syste
 
 ## Features
 
-- **Blazing Fast:** Designed for microsecond-level latency using memory-mapped ring buffers.
+- **Blazing Fast:** Designed for microsecond-level latency using memory-mapped buffers.
 - **Zero-Copy:** Data is borrowed directly from shared memory regions; no unnecessary allocations on the hot path.
 - **Lock-Free:** Single-Writer Multi-Reader (SWMR) pattern with atomic coordination.
 - **Deterministic:** Explicit memory management and pre-allocated stores prevent GC pauses or unexpected heap allocations.

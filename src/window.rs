@@ -1,23 +1,13 @@
 use crate::components::{Store, StoreReader};
 use bytemuck::Pod;
+use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 
 pub struct Window<InValue, OutValue = ()> {
     pub(crate) _v: PhantomData<InValue>,
     pub(crate) _out_v: PhantomData<OutValue>,
-}
-
-impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
-    pub fn from<Reader: StoreReader<InValue>>(
-        &self,
-        _reader: &Reader,
-    ) -> Window<InValue, OutValue> {
-        todo!()
-    }
-
-    pub fn to<S: Store<OutValue>>(&self, _store: &mut S) -> Window<InValue, OutValue> {
-        todo!()
-    }
+    pub(crate) last_index: Cell<usize>,
+    pub(crate) buffer: RefCell<Vec<InValue>>,
 }
 
 impl<InValue, OutValue> Window<InValue, OutValue> {
@@ -25,6 +15,8 @@ impl<InValue, OutValue> Window<InValue, OutValue> {
         Self {
             _v: PhantomData,
             _out_v: PhantomData,
+            last_index: Cell::new(0),
+            buffer: RefCell::new(Vec::new()),
         }
     }
 }
@@ -36,19 +28,93 @@ impl<InValue, OutValue> Default for Window<InValue, OutValue> {
 }
 
 impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
-    pub fn pipe(source: impl StoreReader<InValue>, target: impl Store<OutValue>) -> Self {
-        let _ = source;
-        let _ = target;
-        Self {
-            _v: Default::default(),
-            _out_v: Default::default(),
+    pub fn from<'a, R: StoreReader<InValue>>(
+        &'a self,
+        reader: &'a R,
+    ) -> WindowFrom<'a, InValue, OutValue, R> {
+        WindowFrom {
+            window: self,
+            reader,
+            _in: PhantomData,
+            _out_v: PhantomData,
         }
     }
 
+    pub fn pipe(_source: impl StoreReader<InValue>, _target: impl Store<OutValue>) -> Self {
+        Self::new()
+    }
+}
+
+pub struct WindowFrom<'a, InValue: Pod + Send, OutValue: Pod + Send, R: StoreReader<InValue>> {
+    window: &'a Window<InValue, OutValue>,
+    reader: &'a R,
+    _in: PhantomData<InValue>,
+    _out_v: PhantomData<OutValue>,
+}
+
+impl<'a, InValue: Pod + Send, OutValue: Pod + Send, R: StoreReader<InValue>>
+    WindowFrom<'a, InValue, OutValue, R>
+{
+    pub fn to<'b, S: Store<OutValue>>(
+        self,
+        store: &'b mut S,
+    ) -> WindowTo<'a, 'b, InValue, OutValue, R, S> {
+        WindowTo {
+            window: self.window,
+            reader: self.reader,
+            store,
+            _in: PhantomData,
+            _out: PhantomData,
+        }
+    }
+}
+
+pub struct WindowTo<
+    'a,
+    'b,
+    InValue: Pod + Send,
+    OutValue: Pod + Send,
+    R: StoreReader<InValue>,
+    S: Store<OutValue>,
+> {
+    window: &'a Window<InValue, OutValue>,
+    reader: &'a R,
+    store: &'b mut S,
+    _in: PhantomData<InValue>,
+    _out: PhantomData<OutValue>,
+}
+
+impl<'a, 'b, InValue, OutValue, R, S> WindowTo<'a, 'b, InValue, OutValue, R, S>
+where
+    InValue: Pod + Send,
+    OutValue: Pod + Send,
+    R: StoreReader<InValue>,
+    S: Store<OutValue>,
+{
     pub fn reduce(
         &mut self,
-        _window_size: u32,
-        _update_fn: impl FnOnce(&[InValue]) -> Option<OutValue>,
+        window_size: u32,
+        mut update_fn: impl FnMut(&[InValue]) -> Option<OutValue>,
     ) {
+        let mut buffer = self.window.buffer.borrow_mut();
+        let mut last_index = self.window.last_index.get();
+
+        let current_index = self.reader.get_index();
+        if current_index > last_index {
+            if let Some(val) = self.reader.get() {
+                buffer.push(val);
+                if buffer.len() > window_size as usize {
+                    buffer.remove(0);
+                }
+
+                if buffer.len() == window_size as usize
+                    && let Some(out) = update_fn(&buffer)
+                {
+                    self.store.push(out);
+                }
+            }
+            last_index = current_index;
+            self.window.last_index.set(last_index);
+        }
     }
 }

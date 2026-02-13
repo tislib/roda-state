@@ -8,6 +8,6 @@ pub mod window;
 
 pub use crate::aggregator::Aggregator;
 pub use crate::engine::RodaEngine;
-pub use crate::index::{DirectIndex, RodaDirectIndexReader};
-pub use crate::store::{CircularStore, CircularStoreReader};
+pub use crate::index::{DirectIndex, DirectIndexReader};
+pub use crate::store::{StoreJournal, StoreJournalReader};
 pub use crate::window::Window;

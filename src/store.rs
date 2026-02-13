@@ -1,29 +1,30 @@
 use crate::components::{Store, StoreOptions, StoreReader};
 use crate::index::DirectIndex;
-use crate::storage::mmap_journal::MmapRing;
+use crate::storage::mmap_journal::MmapJournal;
 use bytemuck::Pod;
 use std::cell::Cell;
 use std::path::PathBuf;
 
-pub struct CircularStore {
-    storage: MmapRing,
+pub struct StoreJournal {
+    storage: MmapJournal,
 }
 
-pub struct CircularStoreReader {
+pub struct StoreJournalReader {
     next_index: Cell<usize>,
-    storage: MmapRing,
+    storage: MmapJournal,
 }
 
-impl CircularStore {
-    pub fn new(root_path: &'static str, option: StoreOptions) -> Self {
+impl StoreJournal {
+    pub fn new(root_path: &'static str, option: StoreOptions, state_size: usize) -> Self {
+        let total_size = option.size * state_size;
         let storage = if option.in_memory {
-            MmapRing::new(None, option.size).unwrap()
+            MmapJournal::new(None, total_size).unwrap()
         } else {
             let path: PathBuf = format!("{}/{}.store", root_path, option.name).into();
             if path.exists() {
-                MmapRing::load(path).unwrap()
+                MmapJournal::load(path).unwrap()
             } else {
-                MmapRing::new(Some(path), option.size).unwrap()
+                MmapJournal::new(Some(path), total_size).unwrap()
             }
         };
 
@@ -31,35 +32,41 @@ impl CircularStore {
     }
 }
 
-impl<State: Pod + Send> Store<State> for CircularStore {
-    type Reader = CircularStoreReader;
+impl<State: Pod + Send> Store<State> for StoreJournal {
+    type Reader = StoreJournalReader;
 
     fn push(&mut self, state: State) {
+        let size = size_of::<State>();
+        let current_pos = self.storage.get_write_index();
         assert!(
-            self.storage.len() >= size_of::<State>(),
-            "Store size {} is too small for State size {}",
+            current_pos + size <= self.storage.len(),
+            "Store is full. Capacity: {}, Current position: {}, State size: {}",
             self.storage.len(),
-            size_of::<State>()
+            current_pos,
+            size
         );
         self.storage.append(&state);
     }
 
-    fn reader(&self) -> CircularStoreReader {
-        CircularStoreReader {
+    fn reader(&self) -> StoreJournalReader {
+        StoreJournalReader {
             next_index: Cell::new(0),
             storage: self.storage.reader(),
         }
     }
 
-    fn direct_index<Key: Pod>(&self) -> DirectIndex<Key, State> {
+    fn direct_index<Key: Pod + Ord + Send>(&self) -> DirectIndex<Key, State, StoreJournalReader> {
         DirectIndex {
-            _k: std::marker::PhantomData,
-            _v: std::marker::PhantomData,
+            map: std::sync::Arc::new(crossbeam_skiplist::SkipMap::new()),
+            reader: StoreJournalReader {
+                next_index: Cell::new(0),
+                storage: self.storage.reader(),
+            },
         }
     }
 }
 
-impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
+impl<State: Pod + Send> StoreReader<State> for StoreJournalReader {
     fn next(&self) -> bool {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();
@@ -69,16 +76,13 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
             return false;
         }
 
-        let min_offset = write_index.saturating_sub(self.storage.len());
-        if offset < min_offset {
-            // Lapped: skip to the oldest available data
-            let new_index = min_offset / size_of::<State>();
-            self.next_index.set(new_index + 1);
-        } else {
-            self.next_index.set(index_to_read + 1);
-        }
+        self.next_index.set(index_to_read + 1);
 
         true
+    }
+
+    fn get_index(&self) -> usize {
+        self.next_index.get()
     }
 
     fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
@@ -96,9 +100,6 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
         let write_index = self.storage.get_write_index();
         if offset + size_of::<State>() > write_index {
             return None;
-        }
-        if offset < write_index.saturating_sub(self.storage.len()) {
-            return None; // Data has been overwritten
         }
         Some(handler(self.storage.read(offset)))
     }
@@ -129,9 +130,6 @@ impl<State: Pod + Send> StoreReader<State> for CircularStoreReader {
         let write_index = self.storage.get_write_index();
         if offset + size_of::<State>() * N > write_index {
             return None;
-        }
-        if offset < write_index.saturating_sub(self.storage.len()) {
-            return None; // Part of the window has been overwritten
         }
 
         Some(self.storage.read_window::<State, N>(offset))
