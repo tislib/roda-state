@@ -56,10 +56,7 @@ fn test_window_filling_and_sliding() {
 
     // Push data points
     for i in 1..=5 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -110,10 +107,7 @@ fn test_window_size_one() {
 
     // Push values
     for v in [10.0, 20.0, 30.0] {
-        source.push(DataPoint {
-            value: v,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: v });
     }
 
     // Give some time for the worker to process
@@ -170,10 +164,7 @@ fn test_window_large_sliding() {
 
     // Push values 0..11 -> expect 3 outputs
     for i in 0..12 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -228,10 +219,7 @@ fn test_window_worker_large() {
     });
 
     for i in 0..1000 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -271,10 +259,7 @@ fn test_window_max_value() {
 
     // Push values: expect maxima per 3-sized window
     for v in [1.0, 3.0, 2.0, 5.0, 4.0] {
-        source.push(DataPoint {
-            value: v,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: v });
     }
 
     // Give some time for the worker to process
@@ -319,10 +304,7 @@ fn test_window_all_none_until_full() {
     });
 
     for i in 0..5 {
-        source.push(DataPoint {
-            value: i as f64,
-            ..Default::default()
-        });
+        source.push(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process

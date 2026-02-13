@@ -2,7 +2,6 @@ use crate::components::{Store, StoreOptions, StoreReader};
 use crate::index::DirectIndex;
 use crate::storage::mmap_journal::MmapJournal;
 use bytemuck::Pod;
-use libc::read;
 use std::cell::Cell;
 use std::path::PathBuf;
 

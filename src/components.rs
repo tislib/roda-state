@@ -9,8 +9,7 @@ pub struct StoreOptions {
 
 pub trait Engine {
     fn run_worker(&self, runnable: impl FnMut() + Send + 'static);
-    fn store<State: Pod + Send>(&self, options: StoreOptions)
-    -> impl Store<State> + 'static;
+    fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static;
 }
 
 pub trait Store<State: Pod + Send>: Send {

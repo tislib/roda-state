@@ -45,12 +45,7 @@ impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
     }
 }
 
-pub struct WindowFrom<
-    'a,
-    InValue: Pod + Send,
-    OutValue: Pod + Send,
-    R: StoreReader<InValue>,
-> {
+pub struct WindowFrom<'a, InValue: Pod + Send, OutValue: Pod + Send, R: StoreReader<InValue>> {
     window: &'a Window<InValue, OutValue>,
     reader: &'a R,
     _in: PhantomData<InValue>,
@@ -112,10 +107,10 @@ where
                     buffer.remove(0);
                 }
 
-                if buffer.len() == window_size as usize {
-                    if let Some(out) = update_fn(&buffer) {
-                        self.store.push(out);
-                    }
+                if buffer.len() == window_size as usize
+                    && let Some(out) = update_fn(&buffer)
+                {
+                    self.store.push(out);
                 }
             }
             last_index = current_index;
