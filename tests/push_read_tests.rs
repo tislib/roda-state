@@ -1,17 +1,18 @@
+use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
+use roda_state::components::{Appendable, IterativeReadable};
 
 #[test]
 fn test_push_then_read_single() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test1",
         size: 1024,
         in_memory: true,
     });
     let reader = store.reader();
 
-    store.push(42);
+    store.append(42);
 
     let res = reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0], 42);
@@ -19,8 +20,8 @@ fn test_push_then_read_single() {
 
 #[test]
 fn test_multiple_push_read_in_order() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test2",
         size: 1024,
         in_memory: true,
@@ -28,7 +29,7 @@ fn test_multiple_push_read_in_order() {
     let reader = store.reader();
 
     for v in [1u32, 2, 3, 4, 5] {
-        store.push(v);
+        store.append(v);
     }
 
     let res = reader.get_window::<5>(0).unwrap();
@@ -39,8 +40,8 @@ fn test_multiple_push_read_in_order() {
 
 #[test]
 fn test_interleaved_push_and_read() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test3",
         size: 1024,
         in_memory: true,
@@ -48,10 +49,10 @@ fn test_interleaved_push_and_read() {
     let reader = store.reader();
 
     // Push values; verify FIFO order via get_window
-    store.push(10);
-    store.push(20);
-    store.push(30);
-    store.push(40);
+    store.append(10);
+    store.append(20);
+    store.append(30);
+    store.append(40);
 
     let res = reader.get_window::<4>(0).unwrap();
     assert_eq!(res[0], 10);
@@ -62,14 +63,14 @@ fn test_interleaved_push_and_read() {
 
 #[test]
 fn test_stores_are_isolated_by_type() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
 
-    let mut u_store = engine.store::<u32>(StoreOptions {
+    let mut u_store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "u32",
         size: 1024,
         in_memory: true,
     });
-    let mut i_store = engine.store::<i64>(StoreOptions {
+    let mut i_store = engine.new_journal_store::<i64>(JournalStoreOptions {
         name: "i64",
         size: 1024,
         in_memory: true,
@@ -77,10 +78,10 @@ fn test_stores_are_isolated_by_type() {
     let u_reader = u_store.reader();
     let i_reader = i_store.reader();
 
-    u_store.push(1);
-    i_store.push(-1);
-    u_store.push(2);
-    i_store.push(-2);
+    u_store.append(1);
+    i_store.append(-1);
+    u_store.append(2);
+    i_store.append(-2);
 
     let u_res = u_reader.get_window::<2>(0).unwrap();
     let i_res = i_reader.get_window::<2>(0).unwrap();
@@ -93,18 +94,18 @@ fn test_stores_are_isolated_by_type() {
 
 #[test]
 fn test_push_after_partial_reads() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test4",
         size: 1024,
         in_memory: true,
     });
     let reader = store.reader();
 
-    store.push(100);
-    store.push(200);
-    store.push(300);
-    store.push(400);
+    store.append(100);
+    store.append(200);
+    store.append(300);
+    store.append(400);
 
     let res = reader.get_window::<4>(0).unwrap();
     assert_eq!(res[0], 100);

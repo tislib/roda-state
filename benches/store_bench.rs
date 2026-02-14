@@ -1,10 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use roda_state::RodaEngine;
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
 use roda_state::measure::LatencyMeasurer;
+use roda_state::{JournalStoreOptions, RodaEngine};
 use std::hint::black_box;
-use std::time::Instant;
 
 #[derive(Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
@@ -15,11 +13,11 @@ struct LargeState {
 fn bench_push(c: &mut Criterion) {
     let mut engine = RodaEngine::new();
     engine.enable_latency_stats(true);
-    let mut group = c.benchmark_group("push");
+    let mut group = c.benchmark_group("append");
 
     // 1GB buffer to ensure we don't overflow during benchmarking
     let size = 16 * 1024 * 1024 * 1024;
-    let mut store_u64 = engine.store::<u64>(StoreOptions {
+    let mut store_u64 = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "bench_push_u64",
         size,
         in_memory: true,
@@ -31,13 +29,13 @@ fn bench_push(c: &mut Criterion) {
         let mut val = 0u64;
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            store_u64.push(black_box(val));
+            store_u64.append(black_box(val));
             val += 1;
         });
     });
     println!("push_u64 latency:{}", measurer.format_stats());
 
-    let mut store_large = engine.store::<LargeState>(StoreOptions {
+    let mut store_large = engine.new_journal_store::<LargeState>(JournalStoreOptions {
         name: "bench_push_large",
         size,
         in_memory: true,
@@ -48,7 +46,7 @@ fn bench_push(c: &mut Criterion) {
         let val = LargeState { data: [42; 16] };
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            store_large.push(black_box(val));
+            store_large.append(black_box(val));
         });
     });
     println!("push_128b latency:{}", measurer.format_stats());
@@ -62,7 +60,7 @@ fn bench_fetch(c: &mut Criterion) {
     let mut group = c.benchmark_group("fetch");
 
     let size = 1024 * 1024 * 100; // 100MB
-    let mut store = engine.store::<u64>(StoreOptions {
+    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "bench_fetch",
         size,
         in_memory: true,
@@ -70,7 +68,7 @@ fn bench_fetch(c: &mut Criterion) {
 
     // Pre-fill some data
     for i in 0..10000 {
-        store.push(i as u64);
+        store.append(i as u64);
     }
     let reader = store.reader();
 
@@ -93,13 +91,13 @@ fn bench_fetch(c: &mut Criterion) {
     });
     println!("get_last_u64 latency:{}", measurer.format_stats());
 
-    let mut store_large = engine.store::<LargeState>(StoreOptions {
+    let mut store_large = engine.new_journal_store::<LargeState>(JournalStoreOptions {
         name: "bench_fetch_large",
         size,
         in_memory: true,
     });
     for _ in 0..10000 {
-        store_large.push(LargeState { data: [42; 16] });
+        store_large.append(LargeState { data: [42; 16] });
     }
     let reader_large = store_large.reader();
 
@@ -132,7 +130,7 @@ fn bench_window(c: &mut Criterion) {
     let mut group = c.benchmark_group("window");
 
     let size = 1024 * 1024 * 100; // 100MB
-    let mut store = engine.store::<u64>(StoreOptions {
+    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "bench_window",
         size,
         in_memory: true,
@@ -140,7 +138,7 @@ fn bench_window(c: &mut Criterion) {
 
     // Pre-fill some data
     for i in 0..10000 {
-        store.push(i as u64);
+        store.append(i as u64);
     }
     let reader = store.reader();
 

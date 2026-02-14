@@ -1,4 +1,4 @@
-use crate::components::{Store, StoreReader};
+use crate::components::{Appendable, IterativeReadable};
 use bytemuck::Pod;
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
@@ -28,7 +28,7 @@ impl<InValue, OutValue> Default for Window<InValue, OutValue> {
 }
 
 impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
-    pub fn from<'a, R: StoreReader<InValue>>(
+    pub fn from<'a, R: IterativeReadable<InValue>>(
         &'a self,
         reader: &'a R,
     ) -> WindowFrom<'a, InValue, OutValue, R> {
@@ -40,22 +40,26 @@ impl<InValue: Pod + Send, OutValue: Pod + Send> Window<InValue, OutValue> {
         }
     }
 
-    pub fn pipe(_source: impl StoreReader<InValue>, _target: impl Store<OutValue>) -> Self {
+    pub fn pipe(
+        _source: impl IterativeReadable<InValue>,
+        _target: impl Appendable<OutValue>,
+    ) -> Self {
         Self::new()
     }
 }
 
-pub struct WindowFrom<'a, InValue: Pod + Send, OutValue: Pod + Send, R: StoreReader<InValue>> {
+pub struct WindowFrom<'a, InValue: Pod + Send, OutValue: Pod + Send, R: IterativeReadable<InValue>>
+{
     window: &'a Window<InValue, OutValue>,
     reader: &'a R,
     _in: PhantomData<InValue>,
     _out_v: PhantomData<OutValue>,
 }
 
-impl<'a, InValue: Pod + Send, OutValue: Pod + Send, R: StoreReader<InValue>>
+impl<'a, InValue: Pod + Send, OutValue: Pod + Send, R: IterativeReadable<InValue>>
     WindowFrom<'a, InValue, OutValue, R>
 {
-    pub fn to<'b, S: Store<OutValue>>(
+    pub fn to<'b, S: Appendable<OutValue>>(
         self,
         store: &'b mut S,
     ) -> WindowTo<'a, 'b, InValue, OutValue, R, S> {
@@ -74,8 +78,8 @@ pub struct WindowTo<
     'b,
     InValue: Pod + Send,
     OutValue: Pod + Send,
-    R: StoreReader<InValue>,
-    S: Store<OutValue>,
+    R: IterativeReadable<InValue>,
+    S: Appendable<OutValue>,
 > {
     window: &'a Window<InValue, OutValue>,
     reader: &'a R,
@@ -88,8 +92,8 @@ impl<'a, 'b, InValue, OutValue, R, S> WindowTo<'a, 'b, InValue, OutValue, R, S>
 where
     InValue: Pod + Send,
     OutValue: Pod + Send,
-    R: StoreReader<InValue>,
-    S: Store<OutValue>,
+    R: IterativeReadable<InValue>,
+    S: Appendable<OutValue>,
 {
     pub fn reduce(
         &mut self,
@@ -110,7 +114,7 @@ where
                 if buffer.len() == window_size as usize
                     && let Some(out) = update_fn(&buffer)
                 {
-                    self.store.push(out);
+                    self.store.append(out);
                 }
             }
             last_index = current_index;

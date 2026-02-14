@@ -1,8 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use roda_state::components::{Engine, Index, IndexReader, Store, StoreOptions, StoreReader};
 use roda_state::measure::LatencyMeasurer;
-use roda_state::{Aggregator, RodaEngine, Window};
+use roda_state::{Aggregator, JournalStoreOptions, RodaEngine, Window};
 
 #[derive(Clone, Copy, Zeroable, Pod, Default)]
 #[repr(C)]
@@ -26,7 +25,7 @@ fn bench_index(c: &mut Criterion) {
     let mut group = c.benchmark_group("index");
 
     let size = 16 * 1024 * 1024 * 1024;
-    let mut store = engine.store::<RawData>(StoreOptions {
+    let mut store = engine.new_journal_store::<RawData>(JournalStoreOptions {
         name: "bench_index_store",
         size,
         in_memory: true,
@@ -34,7 +33,7 @@ fn bench_index(c: &mut Criterion) {
 
     // Fill data
     for i in 0..10000 {
-        store.push(RawData {
+        store.append(RawData {
             id: i as u32,
             value: i as f64,
             ..Default::default()
@@ -85,7 +84,7 @@ fn bench_index(c: &mut Criterion) {
 
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            store.push(RawData {
+            store.append(RawData {
                 id: i,
                 value: i as f64,
                 ..Default::default()
@@ -95,7 +94,10 @@ fn bench_index(c: &mut Criterion) {
             i += 1;
         });
     });
-    println!("index_incremental_compute latency:{}", measurer.format_stats());
+    println!(
+        "index_incremental_compute latency:{}",
+        measurer.format_stats()
+    );
 
     group.finish();
 }
@@ -105,12 +107,12 @@ fn bench_aggregator(c: &mut Criterion) {
     let mut group = c.benchmark_group("aggregator");
 
     for num_partitions in [10, 100, 1000] {
-        let mut source = engine.store::<RawData>(StoreOptions {
+        let mut source = engine.new_journal_store::<RawData>(JournalStoreOptions {
             name: "bench_agg_source",
             size: 8 * 1024 * 1024 * 1024,
             in_memory: true,
         });
-        let mut target = engine.store::<AggregatedData>(StoreOptions {
+        let mut target = engine.new_journal_store::<AggregatedData>(JournalStoreOptions {
             name: "bench_agg_target",
             size: 8 * 1024 * 1024 * 1024,
             in_memory: true,
@@ -126,7 +128,7 @@ fn bench_aggregator(c: &mut Criterion) {
                 let mut i = 0u32;
                 b.iter(|| {
                     let _latency_guard = measurer.measure_with_guard();
-                    source.push(RawData {
+                    source.append(RawData {
                         id: i % num_partitions,
                         value: 1.0,
                         ..Default::default()
@@ -136,7 +138,7 @@ fn bench_aggregator(c: &mut Criterion) {
                         .from(&source_reader)
                         .to(&mut target)
                         .partition_by(|r| r.id)
-                        .reduce(|_idx, r, s| {
+                        .reduce(|_idx, r, s, _keep| {
                             s.id = r.id;
                             s.sum += r.value;
                             s.count += 1;
@@ -160,12 +162,12 @@ fn bench_window(c: &mut Criterion) {
     let mut group = c.benchmark_group("window_component");
 
     let size = 8 * 1024 * 1024 * 1024;
-    let mut source = engine.store::<RawData>(StoreOptions {
+    let mut source = engine.new_journal_store::<RawData>(JournalStoreOptions {
         name: "bench_window_source",
         size,
         in_memory: true,
     });
-    let mut target = engine.store::<RawData>(StoreOptions {
+    let mut target = engine.new_journal_store::<RawData>(JournalStoreOptions {
         name: "bench_window_target",
         size,
         in_memory: true,
@@ -180,7 +182,7 @@ fn bench_window(c: &mut Criterion) {
             let mut i = 0u32;
             b.iter(|| {
                 let _latency_guard = measurer.measure_with_guard();
-                source.push(RawData {
+                source.append(RawData {
                     id: i,
                     value: i as f64,
                     ..Default::default()
@@ -215,17 +217,17 @@ fn bench_mixed(c: &mut Criterion) {
     let mut group = c.benchmark_group("mixed_pipeline");
 
     let size = 8 * 1024 * 1024 * 1024;
-    let mut s1 = engine.store::<RawData>(StoreOptions {
+    let mut s1 = engine.new_journal_store::<RawData>(JournalStoreOptions {
         name: "mixed_s1",
         size,
         in_memory: true,
     });
-    let mut s2 = engine.store::<AggregatedData>(StoreOptions {
+    let mut s2 = engine.new_journal_store::<AggregatedData>(JournalStoreOptions {
         name: "mixed_s2",
         size,
         in_memory: true,
     });
-    let mut s3 = engine.store::<AggregatedData>(StoreOptions {
+    let mut s3 = engine.new_journal_store::<AggregatedData>(JournalStoreOptions {
         name: "mixed_s3",
         size,
         in_memory: true,
@@ -243,7 +245,7 @@ fn bench_mixed(c: &mut Criterion) {
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
             // Push to S1
-            s1.push(RawData {
+            s1.append(RawData {
                 id: i % 10,
                 value: 1.0,
                 ..Default::default()
@@ -255,7 +257,7 @@ fn bench_mixed(c: &mut Criterion) {
                 .from(&r1)
                 .to(&mut s2)
                 .partition_by(|r| r.id)
-                .reduce(|_idx, r, s| {
+                .reduce(|_idx, r, s, _keep| {
                     s.id = r.id;
                     s.sum += r.value;
                     s.count += 1;

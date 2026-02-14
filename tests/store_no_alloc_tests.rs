@@ -1,6 +1,6 @@
 use assert_no_alloc::*;
 use roda_state::RodaEngine;
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
+use roda_state::journal_store::JournalStoreOptions;
 
 #[cfg(debug_assertions)]
 #[global_allocator]
@@ -8,27 +8,27 @@ static ALLOC: AllocDisabler = AllocDisabler;
 
 #[test]
 fn test_store_push_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_push",
         size: 1024,
         in_memory: true,
     });
 
     assert_no_alloc(|| {
-        store.push(42);
+        store.append(42);
     });
 }
 
 #[test]
 fn test_store_reader_next_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_next",
         size: 1024,
         in_memory: true,
     });
-    store.push(42);
+    store.append(42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -38,13 +38,13 @@ fn test_store_reader_next_no_alloc() {
 
 #[test]
 fn test_store_reader_get_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_get",
         size: 1024,
         in_memory: true,
     });
-    store.push(42);
+    store.append(42);
     let reader = store.reader();
     reader.next();
 
@@ -55,14 +55,14 @@ fn test_store_reader_get_no_alloc() {
 
 #[test]
 fn test_store_reader_get_window_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_window",
         size: 1024,
         in_memory: true,
     });
-    store.push(42);
-    store.push(43);
+    store.append(42);
+    store.append(43);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -74,13 +74,13 @@ fn test_store_reader_get_window_no_alloc() {
 
 #[test]
 fn test_store_reader_get_at_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_get_at",
         size: 1024,
         in_memory: true,
     });
-    store.push(42);
+    store.append(42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -90,13 +90,13 @@ fn test_store_reader_get_at_no_alloc() {
 
 #[test]
 fn test_store_reader_get_last_no_alloc() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "no_alloc_get_last",
         size: 1024,
         in_memory: true,
     });
-    store.push(42);
+    store.append(42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -106,8 +106,8 @@ fn test_store_reader_get_last_no_alloc() {
 
 #[test]
 fn test_store_direct_index_allocations_allowed() {
-    let engine = RodaEngine::new();
-    let store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "direct_index_alloc",
         size: 1024,
         in_memory: true,

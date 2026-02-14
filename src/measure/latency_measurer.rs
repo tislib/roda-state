@@ -124,8 +124,7 @@ impl LatencyMeasurer {
         }
 
         format!(
-            "count={},\tmin={},\tmax={},\tmean={},\tp50={},\tp90={},\tp99={},\tp999={},\tp9999={}",
-            Self::format_count(stats.count),
+            "\tmin={},\tmax={},\tmean={},\tp50={},\tp90={},\tp99={},\tp999={},\tp9999={}",
             Self::format_duration(stats.min as f64),
             Self::format_duration(stats.max as f64),
             Self::format_duration(stats.mean),

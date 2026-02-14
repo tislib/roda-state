@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Engine, Index, IndexReader, Store, StoreOptions, StoreReader};
+use roda_state::JournalStoreOptions;
+use roda_state::components::{Appendable, IterativeReadable};
 use roda_state::{Aggregator, RodaEngine, Window};
 use std::thread;
 use std::time::Duration;
@@ -58,21 +59,21 @@ fn main() {
 
     // 1. SETUP STORES
     // Stores are bounded, pre-allocated buffers for your state.
-    let mut reading_store = engine.store::<Reading>(StoreOptions {
+    let mut reading_store = engine.new_journal_store::<Reading>(JournalStoreOptions {
         name: "readings",
         size: 1000,
         in_memory: true,
     });
     let reading_reader = reading_store.reader();
 
-    let mut summary_store = engine.store::<Summary>(StoreOptions {
+    let mut summary_store = engine.new_journal_store::<Summary>(JournalStoreOptions {
         name: "summaries",
         size: 100,
         in_memory: true,
     });
     let summary_reader = summary_store.reader();
 
-    let mut alert_store = engine.store::<Alert>(StoreOptions {
+    let mut alert_store = engine.new_journal_store::<Alert>(JournalStoreOptions {
         name: "alerts",
         size: 100,
         in_memory: true,
@@ -98,7 +99,7 @@ fn main() {
                 sensor_id: r.sensor_id,
                 timestamp: r.timestamp / 100_000,
             })
-            .reduce(|idx, r, s| {
+            .reduce(|idx, r, s, _keep| {
                 if idx == 0 {
                     *s = Summary {
                         sensor_id: r.sensor_id,
@@ -161,7 +162,7 @@ fn main() {
     ];
 
     for r in readings {
-        reading_store.push(r);
+        reading_store.append(r);
     }
 
     // Give workers a moment to process

@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
+use roda_state::JournalStoreOptions;
+use roda_state::components::{Appendable, IterativeReadable};
 use roda_state::{RodaEngine, Window};
 
 #[repr(C)]
@@ -19,12 +20,12 @@ pub struct Analysis {
 #[test]
 fn test_window_filling_and_sliding() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 10,
         in_memory: true,
     });
-    let mut target = engine.store::<Analysis>(StoreOptions {
+    let mut target = engine.new_journal_store::<Analysis>(JournalStoreOptions {
         name: "target",
         size: 10,
         in_memory: true,
@@ -56,7 +57,7 @@ fn test_window_filling_and_sliding() {
 
     // Push data points
     for i in 1..=5 {
-        source.push(DataPoint { value: i as f64 });
+        source.append(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -75,12 +76,12 @@ fn test_window_filling_and_sliding() {
 #[test]
 fn test_window_size_one() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 10,
         in_memory: true,
     });
-    let mut target = engine.store::<Analysis>(StoreOptions {
+    let mut target = engine.new_journal_store::<Analysis>(JournalStoreOptions {
         name: "target",
         size: 10,
         in_memory: true,
@@ -107,7 +108,7 @@ fn test_window_size_one() {
 
     // Push values
     for v in [10.0, 20.0, 30.0] {
-        source.push(DataPoint { value: v });
+        source.append(DataPoint { value: v });
     }
 
     // Give some time for the worker to process
@@ -125,12 +126,12 @@ fn test_window_size_one() {
 #[test]
 fn test_window_large_sliding() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 100,
         in_memory: true,
     });
-    let mut target = engine.store::<Analysis>(StoreOptions {
+    let mut target = engine.new_journal_store::<Analysis>(JournalStoreOptions {
         name: "target",
         size: 100,
         in_memory: true,
@@ -164,7 +165,7 @@ fn test_window_large_sliding() {
 
     // Push values 0..11 -> expect 3 outputs
     for i in 0..12 {
-        source.push(DataPoint { value: i as f64 });
+        source.append(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -182,12 +183,12 @@ fn test_window_large_sliding() {
 #[test]
 fn test_window_worker_large() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 2000,
         in_memory: true,
     });
-    let mut target = engine.store::<Analysis>(StoreOptions {
+    let mut target = engine.new_journal_store::<Analysis>(JournalStoreOptions {
         name: "target",
         size: 2000,
         in_memory: true,
@@ -219,7 +220,7 @@ fn test_window_worker_large() {
     });
 
     for i in 0..1000 {
-        source.push(DataPoint { value: i as f64 });
+        source.append(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process
@@ -233,12 +234,12 @@ fn test_window_worker_large() {
 #[test]
 fn test_window_max_value() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 10,
         in_memory: true,
     });
-    let mut target = engine.store::<f64>(StoreOptions {
+    let mut target = engine.new_journal_store::<f64>(JournalStoreOptions {
         name: "target",
         size: 10,
         in_memory: true,
@@ -259,7 +260,7 @@ fn test_window_max_value() {
 
     // Push values: expect maxima per 3-sized window
     for v in [1.0, 3.0, 2.0, 5.0, 4.0] {
-        source.push(DataPoint { value: v });
+        source.append(DataPoint { value: v });
     }
 
     // Give some time for the worker to process
@@ -276,12 +277,12 @@ fn test_window_all_none_until_full() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<DataPoint>(StoreOptions {
+    let mut source = engine.new_journal_store::<DataPoint>(JournalStoreOptions {
         name: "source",
         size: 10,
         in_memory: true,
     });
-    let mut target = engine.store::<u8>(StoreOptions {
+    let mut target = engine.new_journal_store::<u8>(JournalStoreOptions {
         name: "target",
         size: 10,
         in_memory: true,
@@ -304,7 +305,7 @@ fn test_window_all_none_until_full() {
     });
 
     for i in 0..5 {
-        source.push(DataPoint { value: i as f64 });
+        source.append(DataPoint { value: i as f64 });
     }
 
     // Give some time for the worker to process

@@ -1,12 +1,13 @@
+use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::components::{Engine, Index, IndexReader, Store, StoreOptions, StoreReader};
+use roda_state::components::{Appendable, IterativeReadable};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
 #[test]
 fn test_store_reader_edge_cases() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "edge_cases",
         size: 1024,
         in_memory: true,
@@ -26,7 +27,7 @@ fn test_store_reader_edge_cases() {
     // 4. get before next()
     assert_eq!(reader.get(), None);
 
-    store.push(42);
+    store.append(42);
 
     // 5. get before next() but after push
     assert_eq!(reader.get(), None);
@@ -57,14 +58,14 @@ fn test_store_reader_edge_cases() {
 
 #[test]
 fn test_index_reader_with_and_get() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "index_with",
         size: 1024,
         in_memory: true,
     });
     let index = store.direct_index::<u32>();
-    store.push(123);
+    store.append(123);
     index.compute(|&v| v);
     let reader = index.reader();
 
@@ -77,16 +78,16 @@ fn test_index_reader_with_and_get() {
 
 #[test]
 fn test_store_full_capacity() {
-    let engine = RodaEngine::new();
+    let mut engine = RodaEngine::new();
     let num_items = 10;
-    let mut store = engine.store::<u64>(StoreOptions {
+    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "full_capacity",
         size: num_items,
         in_memory: true,
     });
 
     for i in 0..num_items {
-        store.push(i as u64);
+        store.append(i as u64);
     }
 
     let reader = store.reader();
@@ -97,7 +98,7 @@ fn test_store_full_capacity() {
     assert!(!reader.next());
 
     // This should panic if it exceeds capacity
-    // However, looking at store.rs:
+    // However, looking at journal_store:
     // self.storage.append(&state);
     // and MmapJournal::append
     // Let's see what happens if we push one more.
@@ -106,26 +107,26 @@ fn test_store_full_capacity() {
 #[test]
 #[should_panic(expected = "Store is full")]
 fn test_store_overflow_panic() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u64>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "overflow",
         size: 1,
         in_memory: true,
     });
 
-    store.push(1);
-    store.push(2); // Should panic here
+    store.append(1);
+    store.append(2); // Should panic here
 }
 
 #[test]
 fn test_store_concurrent_load() {
     let engine = Arc::new(RodaEngine::new());
-    let store_options = StoreOptions {
+    let store_options = JournalStoreOptions {
         name: "concurrent_load",
         size: 1024 * 1024,
         in_memory: true,
     };
-    let mut store = engine.store::<u32>(store_options);
+    let mut store = engine.new_journal_store::<u32>(store_options);
 
     let num_readers = 4;
     let num_pushes = 1000;
@@ -163,7 +164,7 @@ fn test_store_concurrent_load() {
 
     barrier.wait();
     for i in 1..=num_pushes {
-        store.push(i as u32);
+        store.append(i as u32);
     }
 
     let mut total_read = 0;
@@ -176,8 +177,8 @@ fn test_store_concurrent_load() {
 
 #[test]
 fn test_index_load_and_edge_cases() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u64>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "index_edge",
         size: 1024 * 1024,
         in_memory: true,
@@ -192,7 +193,7 @@ fn test_index_load_and_edge_cases() {
     // 2. Load test
     let num_items = 1000;
     for i in 0..num_items {
-        store.push(i as u64);
+        store.append(i as u64);
         index.compute(|&v| v);
     }
 
@@ -201,10 +202,10 @@ fn test_index_load_and_edge_cases() {
     }
 
     // 3. Duplicate keys (overwrites)
-    store.push(100); // 1001st item
+    store.append(100); // 1001st item
     index.compute(|&v| v); // index the 100th -> 100 (key 100)
 
-    store.push(10000); // 1002nd item
+    store.append(10000); // 1002nd item
     index.compute(|_v| 100); // Force key 100 to map to value 10000
     assert_eq!(index_reader.get(&100), Some(10000));
 }
@@ -212,7 +213,7 @@ fn test_index_load_and_edge_cases() {
 #[test]
 fn test_index_concurrent_compute() {
     let engine = Arc::new(RodaEngine::new());
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "index_concurrent",
         size: 1024 * 1024,
         in_memory: true,
@@ -222,7 +223,7 @@ fn test_index_concurrent_compute() {
 
     let num_items = 5000;
     for i in 0..num_items {
-        store.push(i as u32);
+        store.append(i as u32);
     }
 
     let num_workers = 5;
@@ -262,8 +263,8 @@ fn test_index_concurrent_compute() {
 
 #[test]
 fn test_index_reader_concurrent_get() {
-    let engine = RodaEngine::new();
-    let mut store = engine.store::<u32>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "index_read_concurrent",
         size: 1024 * 1024,
         in_memory: true,
@@ -272,7 +273,7 @@ fn test_index_reader_concurrent_get() {
 
     let num_items = 1000;
     for i in 0..num_items {
-        store.push(i as u32);
+        store.append(i as u32);
         index.compute(|&v| v);
     }
 

@@ -1,21 +1,48 @@
-use crate::components::{Engine, Store, StoreOptions};
+use crate::journal_store::{JournalStore, JournalStoreOptions};
 use crate::measure::latency_measurer::LatencyMeasurer;
-use crate::store::StoreJournal;
+use crate::op_counter::OpCounter;
 use bytemuck::Pod;
+use spdlog::info;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::thread;
-use std::time::Instant;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 pub struct RodaEngine {
     root_path: &'static str,
     running: Arc<AtomicBool>,
     enable_latency_stats: bool,
     worker_handlers: Vec<thread::JoinHandle<()>>,
+    op_counter: Arc<OpCounter>,
 }
 
-impl Engine for RodaEngine {
-    fn run_worker(&mut self, mut runnable: impl FnMut() + Send + 'static) {
+impl RodaEngine {
+    pub fn new() -> Self {
+        Self {
+            root_path: "data",
+            running: Arc::new(AtomicBool::new(true)),
+            enable_latency_stats: false,
+            worker_handlers: vec![],
+            op_counter: OpCounter::new(),
+        }
+    }
+
+    pub fn new_with_root_path(root_path: &'static str) -> Self {
+        Self {
+            root_path,
+            running: Arc::new(AtomicBool::new(true)),
+            enable_latency_stats: false,
+            worker_handlers: vec![],
+            op_counter: OpCounter::new(),
+        }
+    }
+
+    pub fn enable_latency_stats(&mut self, enable: bool) {
+        self.enable_latency_stats = enable;
+    }
+
+    pub fn run_worker(&mut self, mut runnable: impl FnMut() + Send + 'static) {
         let worker_id = self.worker_handlers.len();
         let running = self.running.clone();
         let enable_latency_stats = self.enable_latency_stats;
@@ -27,7 +54,7 @@ impl Engine for RodaEngine {
                     runnable();
                     measurer.measure(instant.elapsed());
                 }
-                println!("[Worker:{}]{}", worker_id, measurer.format_stats());
+                info!("[Latency/Worker:{}]{}", worker_id, measurer.format_stats());
             } else {
                 while running.load(std::sync::atomic::Ordering::Relaxed) {
                     runnable();
@@ -37,37 +64,48 @@ impl Engine for RodaEngine {
         self.worker_handlers.push(handler);
     }
 
-    fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static {
-        StoreJournal::new(self.root_path, options, size_of::<State>())
+    pub fn new_journal_store<State: Pod + Send>(
+        &self,
+        options: JournalStoreOptions,
+    ) -> JournalStore<State> {
+        JournalStore::new(
+            self.root_path,
+            self.op_counter.clone(),
+            options,
+            size_of::<State>(),
+        )
     }
-}
 
-impl RodaEngine {
-    pub fn new() -> Self {
-        Self {
-            root_path: "data",
-            running: Arc::new(AtomicBool::new(true)),
-            enable_latency_stats: false,
-            worker_handlers: vec![],
+    pub fn await_idle(&self, timeout: Duration) {
+        let start = Instant::now();
+        let mut last_op_count = self.op_counter.total_op_count();
+        loop {
+            sleep(Duration::from_millis(100));
+            let new_op_count = self.op_counter.total_op_count();
+            if new_op_count == last_op_count {
+                break;
+            }
+            if start.elapsed() > timeout {
+                break;
+            }
+            println!("[OPC]{}", new_op_count);
+            last_op_count = new_op_count;
         }
-    }
-
-    pub fn new_with_root_path(root_path: &'static str) -> Self {
-        Self {
-            root_path,
-            running: Arc::new(AtomicBool::new(true)),
-            enable_latency_stats: false,
-            worker_handlers: vec![],
-        }
-    }
-
-    pub fn enable_latency_stats(&mut self, enable: bool) {
-        self.enable_latency_stats = enable;
     }
 }
 
 impl Default for RodaEngine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Drop for RodaEngine {
+    fn drop(&mut self) {
+        self.running
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        for handler in self.worker_handlers.drain(..) {
+            handler.join().unwrap();
+        }
     }
 }

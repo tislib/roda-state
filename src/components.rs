@@ -1,55 +1,18 @@
-use crate::index::DirectIndex;
 use bytemuck::Pod;
 
-pub struct StoreOptions {
-    pub name: &'static str,
-    pub size: usize,
-    pub in_memory: bool,
+/// For structures where we append data to the end (Journals, Logs).
+pub trait Appendable<State: Pod> {
+    fn append(&mut self, state: State);
 }
 
-pub trait Engine {
-    fn run_worker(&mut self, runnable: impl FnMut() + Send + 'static);
-    fn store<State: Pod + Send>(&self, options: StoreOptions) -> impl Store<State> + 'static;
+/// For structures where we update a specific "address" or "slot" (State Maps, Arrays).
+pub trait Settable<State: Pod> {
+    fn set(&mut self, at: usize, state: State);
 }
 
-pub trait Store<State: Pod + Send>: Send {
-    type Reader: StoreReader<State>;
-    fn push(&mut self, state: State);
-    fn reader(&self) -> Self::Reader;
-    fn direct_index<Key: Pod + Ord + Send>(&self) -> DirectIndex<Key, State, Self::Reader>;
-}
-
-pub trait StoreReader<State: Pod + Send>: Send {
+/// The base for anything that can be read.
+pub trait IterativeReadable<State: Pod> {
     fn next(&self) -> bool;
-    fn get_index(&self) -> usize;
-
-    fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>
-    where
-        Self: Sized;
-    fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R>
-    where
-        Self: Sized;
-    fn with_last<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R>
-    where
-        Self: Sized;
-
     fn get(&self) -> Option<State>;
-    fn get_at(&self, at: usize) -> Option<State>;
-    fn get_last(&self) -> Option<State>;
-    fn get_window<const N: usize>(&self, at: usize) -> Option<&[State]>
-    where
-        Self: Sized;
-}
-
-pub trait Index<Key: Pod + Ord + Send, State: Pod + Send> {
-    type Reader: IndexReader<Key, State>;
-    fn compute(&self, key_fn: impl FnOnce(&State) -> Key);
-    fn reader(&self) -> Self::Reader;
-    fn iter(&self) -> impl Iterator<Item = (Key, State)> + '_;
-}
-
-pub trait IndexReader<Key: Pod + Ord + Send, State: Pod + Send> {
-    fn with<R>(&self, key: &Key, handler: impl FnOnce(&State) -> R) -> Option<R>;
-    fn get(&self, key: &Key) -> Option<State>;
-    fn iter(&self) -> impl Iterator<Item = (Key, State)> + '_;
+    fn get_index(&self) -> usize;
 }

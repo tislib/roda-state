@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::components::{Engine, Store, StoreOptions, StoreReader};
+use roda_state::JournalStoreOptions;
+use roda_state::components::{Appendable, IterativeReadable};
 use roda_state::{Aggregator, RodaEngine};
 
 #[repr(C)]
@@ -29,13 +30,13 @@ pub struct GroupKey {
 
 #[test]
 fn test_aggregator_count_and_sum() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 1024,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 1024,
         in_memory: true,
@@ -52,7 +53,7 @@ fn test_aggregator_count_and_sum() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 stats.sensor_id = reading.sensor_id;
                 stats.count = (index + 1) as u32;
                 stats.sum += reading.value;
@@ -60,12 +61,12 @@ fn test_aggregator_count_and_sum() {
     });
 
     // Push readings
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 10.0,
         ..Default::default()
     });
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 20.0,
         ..Default::default()
@@ -83,13 +84,13 @@ fn test_aggregator_count_and_sum() {
 
 #[test]
 fn test_aggregator_min_max_tracking() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 1024,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 1024,
         in_memory: true,
@@ -106,7 +107,7 @@ fn test_aggregator_min_max_tracking() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 if index == 0 {
                     stats.min = reading.value;
                     stats.max = reading.value;
@@ -119,17 +120,17 @@ fn test_aggregator_min_max_tracking() {
     });
 
     // Push readings
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 10.0,
         ..Default::default()
     });
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 20.0,
         ..Default::default()
     });
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 5.0,
         ..Default::default()
@@ -146,13 +147,13 @@ fn test_aggregator_min_max_tracking() {
 
 #[test]
 fn test_aggregator_multiple_partitions() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 1024,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 1024,
         in_memory: true,
@@ -169,24 +170,24 @@ fn test_aggregator_multiple_partitions() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 stats.sensor_id = reading.sensor_id;
                 stats.count = (index + 1) as u32;
             });
     });
 
     // Push readings across partitions
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 1.0,
         ..Default::default()
     });
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 2,
         value: 2.0,
         ..Default::default()
     });
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 3.0,
         ..Default::default()
@@ -207,13 +208,13 @@ fn test_aggregator_multiple_partitions() {
 
 #[test]
 fn test_aggregator_complex_key() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 1024,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 1024,
         in_memory: true,
@@ -233,13 +234,13 @@ fn test_aggregator_complex_key() {
                 sensor_id: r.sensor_id,
                 group_id: (r.value / 10.0) as u16,
             })
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 stats.sensor_id = reading.sensor_id;
                 stats.count = (index + 1) as u32;
             });
     });
 
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 1,
         value: 15.0,
         ..Default::default()
@@ -255,13 +256,13 @@ fn test_aggregator_complex_key() {
 
 #[test]
 fn test_aggregator_reset_behavior() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 10,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 10,
         in_memory: true,
@@ -278,7 +279,7 @@ fn test_aggregator_reset_behavior() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 stats.sensor_id = reading.sensor_id;
                 stats.count = (index + 1) as u32;
             });
@@ -286,7 +287,7 @@ fn test_aggregator_reset_behavior() {
 
     // Push several readings for sensor 1
     for i in 0..5 {
-        source.push(SensorReading {
+        source.append(SensorReading {
             sensor_id: 1,
             value: i as f64,
             ..Default::default()
@@ -294,7 +295,7 @@ fn test_aggregator_reset_behavior() {
     }
 
     // Switch to sensor 2
-    source.push(SensorReading {
+    source.append(SensorReading {
         sensor_id: 2,
         value: 100.0,
         ..Default::default()
@@ -315,13 +316,13 @@ fn test_aggregator_reset_behavior() {
 
 #[test]
 fn test_aggregator_large_index() {
-    let engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut engine = RodaEngine::new();
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 1024,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 1024,
         in_memory: true,
@@ -337,14 +338,14 @@ fn test_aggregator_large_index() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, _reading, stats| {
+            .reduce(|index, _reading, stats, _keep| {
                 stats.count = (index + 1) as u32;
             });
     });
 
     // Simulate 1000 items in one partition
     for i in 0..1000 {
-        source.push(SensorReading {
+        source.append(SensorReading {
             sensor_id: 1,
             value: i as f64,
             ..Default::default()
@@ -364,12 +365,12 @@ fn test_aggregator_large_index() {
 #[test]
 fn test_aggregator_worker_large() {
     let mut engine = RodaEngine::new();
-    let mut source = engine.store::<SensorReading>(StoreOptions {
+    let mut source = engine.new_journal_store::<SensorReading>(JournalStoreOptions {
         name: "source",
         size: 2000,
         in_memory: true,
     });
-    let mut target = engine.store::<SensorStats>(StoreOptions {
+    let mut target = engine.new_journal_store::<SensorStats>(JournalStoreOptions {
         name: "target",
         size: 2000,
         in_memory: true,
@@ -385,7 +386,7 @@ fn test_aggregator_worker_large() {
             .from(&source_reader)
             .to(&mut target)
             .partition_by(|r| r.sensor_id)
-            .reduce(|index, reading, stats| {
+            .reduce(|index, reading, stats, _keep| {
                 stats.sensor_id = reading.sensor_id;
                 stats.count = (index + 1) as u32;
                 stats.sum += reading.value;
@@ -393,7 +394,7 @@ fn test_aggregator_worker_large() {
     });
 
     for _ in 0..1000 {
-        source.push(SensorReading {
+        source.append(SensorReading {
             sensor_id: 1,
             value: 1.0,
             ..Default::default()

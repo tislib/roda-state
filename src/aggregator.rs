@@ -1,4 +1,4 @@
-use crate::components::{Store, StoreReader};
+use crate::components::{Appendable, IterativeReadable};
 use bytemuck::Pod;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -36,7 +36,7 @@ impl<InValue: Pod, OutValue: Pod, PartitionKey> Default
 impl<InValue: Pod + Send, OutValue: Pod + Send, PartitionKey>
     Aggregator<InValue, OutValue, PartitionKey>
 {
-    pub fn from<'a, R: StoreReader<InValue>>(
+    pub fn from<'a, R: IterativeReadable<InValue>>(
         &'a self,
         reader: &'a R,
     ) -> AggregatorFrom<'a, InValue, OutValue, PartitionKey, R> {
@@ -48,10 +48,6 @@ impl<InValue: Pod + Send, OutValue: Pod + Send, PartitionKey>
             _partition_key: PhantomData,
         }
     }
-
-    pub fn pipe(_source: impl Store<InValue>, _target: impl Store<OutValue>) -> Self {
-        Self::new()
-    }
 }
 
 pub struct AggregatorFrom<
@@ -59,7 +55,7 @@ pub struct AggregatorFrom<
     InValue: Pod + Send,
     OutValue: Pod + Send,
     PartitionKey,
-    R: StoreReader<InValue>,
+    R: IterativeReadable<InValue>,
 > {
     aggregator: &'a Aggregator<InValue, OutValue, PartitionKey>,
     reader: &'a R,
@@ -68,10 +64,10 @@ pub struct AggregatorFrom<
     _partition_key: PhantomData<PartitionKey>,
 }
 
-impl<'a, InValue: Pod + Send, OutValue: Pod + Send, PartitionKey, R: StoreReader<InValue>>
+impl<'a, InValue: Pod + Send, OutValue: Pod + Send, PartitionKey, R: IterativeReadable<InValue>>
     AggregatorFrom<'a, InValue, OutValue, PartitionKey, R>
 {
-    pub fn to<'b, S: Store<OutValue>>(
+    pub fn to<'b, S: Appendable<OutValue>>(
         self,
         store: &'b mut S,
     ) -> AggregatorTo<'a, 'b, InValue, OutValue, PartitionKey, R, S> {
@@ -92,8 +88,8 @@ pub struct AggregatorTo<
     InValue: Pod + Send,
     OutValue: Pod + Send,
     PartitionKey,
-    R: StoreReader<InValue>,
-    S: Store<OutValue>,
+    R: IterativeReadable<InValue>,
+    S: Appendable<OutValue>,
 > {
     aggregator: &'a Aggregator<InValue, OutValue, PartitionKey>,
     reader: &'a R,
@@ -109,8 +105,8 @@ impl<
     InValue: Pod + Send,
     OutValue: Pod + Send,
     PartitionKey,
-    R: StoreReader<InValue>,
-    S: Store<OutValue>,
+    R: IterativeReadable<InValue>,
+    S: Appendable<OutValue>,
 > AggregatorTo<'a, 'b, InValue, OutValue, PartitionKey, R, S>
 {
     pub fn partition_by<F>(
@@ -157,28 +153,33 @@ where
     InValue: Pod + Send,
     OutValue: Pod + Send,
     PartitionKey: Hash + Eq + Send,
-    R: StoreReader<InValue>,
-    S: Store<OutValue>,
+    R: IterativeReadable<InValue>,
+    S: Appendable<OutValue>,
     F: Fn(&InValue) -> PartitionKey,
 {
-    pub fn reduce(self, mut update_fn: impl FnMut(u64, &InValue, &mut OutValue)) {
+    pub fn reduce(self, mut update_fn: impl FnMut(u64, &InValue, &mut OutValue, &mut bool)) {
         let mut states = self.aggregator.states.borrow_mut();
-        let mut last_index = self.aggregator.last_index.get();
+        let mut last_idx = self.aggregator.last_index.get();
 
         let current_index = self.reader.get_index();
-        if current_index > last_index {
+        if current_index > last_idx {
             if let Some(val) = self.reader.get() {
                 let key = (self.key_fn)(&val);
                 let (index, mut state) =
                     states.get(&key).cloned().unwrap_or((0, OutValue::zeroed()));
 
-                update_fn(index, &val, &mut state);
-                self.store.push(state);
+                let mut keep = true;
+                update_fn(index, &val, &mut state, &mut keep);
+                if keep {
+                    self.store.append(state);
 
-                states.insert(key, (index + 1, state));
+                    states.insert(key, (index + 1, state));
+                } else {
+                    states.remove(&key);
+                }
             }
-            last_index = current_index;
-            self.aggregator.last_index.set(last_index);
+            last_idx = current_index;
+            self.aggregator.last_index.set(last_idx);
         }
     }
 }
