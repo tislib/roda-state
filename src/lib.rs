@@ -5,7 +5,7 @@ pub mod engine;
 pub mod journal_store;
 pub mod measure;
 mod op_counter;
-mod slot_store;
+pub mod slot_store;
 mod storage;
 pub mod window;
 

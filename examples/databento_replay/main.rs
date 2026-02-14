@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use clap::Parser;
 use spdlog::kv::Key;
 use spdlog::prelude::*;
@@ -57,8 +58,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let market_reader = market_store.reader();
 
+    let mut map: BTreeMap<u32, u32> = BTreeMap::new();
     // Prepare Book Level
     engine.run_worker(move || {
+        map.clear();
         if market_reader.next() {
             market_book_aggregator
                 .from(&market_reader)

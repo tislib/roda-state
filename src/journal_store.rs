@@ -32,9 +32,8 @@ impl<State: Pod + Send> JournalStore<State> {
         root_path: &'static str,
         op_counter: Arc<OpCounter>,
         option: JournalStoreOptions,
-        state_size: usize,
     ) -> Self {
-        let total_size = option.size * state_size;
+        let total_size = option.size * size_of::<State>();
         let storage = if option.in_memory {
             JournalMmap::new(None, total_size).unwrap()
         } else {

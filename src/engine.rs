@@ -1,6 +1,7 @@
 use crate::journal_store::{JournalStore, JournalStoreOptions};
 use crate::measure::latency_measurer::LatencyMeasurer;
 use crate::op_counter::OpCounter;
+use crate::slot_store::{SlotStore, SlotStoreOptions};
 use bytemuck::Pod;
 use spdlog::info;
 use std::sync::Arc;
@@ -68,12 +69,11 @@ impl RodaEngine {
         &self,
         options: JournalStoreOptions,
     ) -> JournalStore<State> {
-        JournalStore::new(
-            self.root_path,
-            self.op_counter.clone(),
-            options,
-            size_of::<State>(),
-        )
+        JournalStore::new(self.root_path, self.op_counter.clone(), options)
+    }
+
+    pub fn new_slot_store<State: Pod + Send>(&self, options: SlotStoreOptions) -> SlotStore<State> {
+        SlotStore::new(self.root_path, self.op_counter.clone(), options)
     }
 
     pub fn await_idle(&self, timeout: Duration) {
@@ -88,7 +88,6 @@ impl RodaEngine {
             if start.elapsed() > timeout {
                 break;
             }
-            println!("[OPC]{}", new_op_count);
             last_op_count = new_op_count;
         }
     }
