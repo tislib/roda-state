@@ -1,8 +1,7 @@
 use bytemuck::{Pod, Zeroable};
-use roda_state::JournalStoreOptions;
-use roda_state::components::{Appendable, IterativeReadable};
-use roda_state::{Aggregator, RodaEngine, Window};
-use std::thread;
+use roda_state::StageEngine;
+use roda_state::pipe;
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// Raw sensor reading
@@ -55,101 +54,81 @@ pub struct Alert {
 }
 
 fn main() {
-    let mut engine = RodaEngine::new();
+    println!("Starting Sensor Multistage Pipeline with Closures (StageEngine)...");
 
-    // 1. SETUP STORES
-    // Stores are bounded, pre-allocated buffers for your state.
-    let mut reading_store = engine.new_journal_store::<Reading>(JournalStoreOptions {
-        name: "readings",
-        size: 1000,
-        in_memory: true,
-    });
-    let reading_reader = reading_store.reader();
+    // 1. Initialize StageEngine
+    // StageEngine starts as a passthrough for Reading
+    let engine = StageEngine::<Reading, Reading>::with_capacity(1000);
 
-    let mut summary_store = engine.new_journal_store::<Summary>(JournalStoreOptions {
-        name: "summaries",
-        size: 100,
-        in_memory: true,
-    });
-    let summary_reader = summary_store.reader();
-
-    let mut alert_store = engine.new_journal_store::<Alert>(JournalStoreOptions {
-        name: "alerts",
-        size: 100,
-        in_memory: true,
-    });
-    let alert_reader_for_print = alert_store.reader();
-
-    // Secondary index to look up summaries by sensor and time
-    let summary_index = summary_store.direct_index::<SensorKey>();
-    let summary_index_reader = summary_index.reader();
-
-    // 2. DEFINE PIPELINES
-    let summary_pipeline: Aggregator<Reading, Summary, SensorKey> = Aggregator::new();
-    let alert_pipeline: Window<Summary, Alert> = Window::new();
-
-    // 3. WORKER: Aggregate readings into summaries
-    engine.run_worker(move || {
-        reading_reader.next(); // Wait for data
-
-        summary_pipeline
-            .from(&reading_reader)
-            .to(&mut summary_store)
-            .partition_by(|r| SensorKey {
+    // 2. Add Aggregation Stage: Reading -> Summary
+    // Redesigned as a pipeline of closures
+    let mut summaries: HashMap<SensorKey, Summary> = HashMap::new();
+    let engine = engine.add_stage(pipe![
+        move |r: Reading| {
+            let key = SensorKey {
                 sensor_id: r.sensor_id,
-                timestamp: r.timestamp / 100_000,
-            })
-            .reduce(|idx, r, s, _keep| {
-                if idx == 0 {
-                    *s = Summary {
+                timestamp: (r.timestamp / 100_000) * 100_000,
+            };
+            
+            let entry = summaries.entry(key);
+            let summary = match entry {
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    let s = Summary {
                         sensor_id: r.sensor_id,
                         min: r.value,
                         max: r.value,
                         avg: r.value,
                         count: 1,
-                        timestamp: (r.timestamp / 100_000) * 100_000,
+                        timestamp: key.timestamp,
                     };
-                } else {
+                    e.insert(s);
+                    s
+                }
+                std::collections::hash_map::Entry::Occupied(mut e) => {
+                    let s = e.get_mut();
                     s.min = s.min.min(r.value);
                     s.max = s.max.max(r.value);
                     s.avg = (s.avg * s.count as f64 + r.value) / (s.count + 1) as f64;
                     s.count += 1;
+                    *s
                 }
-            });
+            };
+            Some(summary)
+        },
+        |s: Summary| {
+            println!(
+                "AGGREGATOR: Sensor {} at {}: Avg={:.2}, Count={}",
+                s.sensor_id, s.timestamp, s.avg, s.count
+            );
+            Some(s)
+        }
+    ]);
 
-        // Update the index so summaries can be found by key
-        summary_index.compute(|s| SensorKey {
-            sensor_id: s.sensor_id,
-            timestamp: s.timestamp / 100_000,
-        });
-    });
-
-    // 4. WORKER: Detect anomalies from summaries
-    engine.run_worker(move || {
-        summary_reader.next(); // Wait for data
-
-        alert_pipeline
-            .from(&summary_reader)
-            .to(&mut alert_store)
-            .reduce(2, |window| {
-                let (prev, cur) = (window[0], window[1]);
-
+    // 3. Add Anomaly Detection Stage: Summary -> Alert
+    // Redesigned as a closure (which is also a pipeline of one)
+    let mut last_summaries: HashMap<u64, Summary> = HashMap::new();
+    let mut engine = engine.add_stage(pipe![
+        move |s: Summary| {
+            let prev = last_summaries.get(&s.sensor_id).copied();
+            last_summaries.insert(s.sensor_id, s);
+            
+            if let Some(prev) = prev {
                 // Alert if average value jumps by more than 50%
-                if cur.avg > prev.avg * 1.5 {
-                    Some(Alert {
-                        sensor_id: cur.sensor_id,
-                        timestamp: cur.timestamp,
+                if s.avg > prev.avg * 1.5 {
+                    return Some(Alert {
+                        sensor_id: s.sensor_id,
+                        timestamp: s.timestamp,
                         severity: 1,
                         ..Default::default()
-                    })
-                } else {
-                    None
+                    });
                 }
-            });
-    });
+            }
+            None
+        }
+    ]);
 
-    // 5. INGEST DATA
-    println!("Pushing sensor readings...");
+    // 4. INGEST DATA
+    println!("\nPushing sensor readings...");
     let readings = [
         Reading::from(1, 10.0, 10_000),
         Reading::from(1, 12.0, 20_000),
@@ -162,28 +141,27 @@ fn main() {
     ];
 
     for r in readings {
-        reading_store.append(r);
+        engine.send(r);
     }
 
     // Give workers a moment to process
-    thread::sleep(Duration::from_millis(100));
+    engine.await_idle(Duration::from_millis(100));
 
-    // 6. DISPLAY RESULTS
-    println!("\nSummaries in Index:");
-    for (_, summary) in summary_index_reader.iter() {
-        println!(
-            "Sensor {} at {}: Avg={:.2}, Count={}",
-            summary.sensor_id, summary.timestamp, summary.avg, summary.count
-        );
-    }
-
+    // 5. DISPLAY FINAL RESULTS
     println!("\nAlerts Detected:");
-    while alert_reader_for_print.next() {
-        if let Some(alert) = alert_reader_for_print.get() {
-            println!(
-                "ALERT: Sensor {} anomaly at {}",
-                alert.sensor_id, alert.timestamp
-            );
+    let total_alerts = engine.output_size();
+    if total_alerts == 0 {
+        println!("No alerts detected.");
+    } else {
+        for _ in 0..total_alerts {
+            if let Some(alert) = engine.receive() {
+                println!(
+                    "ALERT: Sensor {} anomaly at {}",
+                    alert.sensor_id, alert.timestamp
+                );
+            }
         }
     }
+    
+    println!("\nDone!");
 }

@@ -9,7 +9,7 @@ pub mod slot_store;
 mod storage;
 pub mod window;
 pub mod stage;
-pub mod new_engine;
+pub mod stage_engine;
 
 pub use crate::aggregator::Aggregator;
 pub use crate::direct_index::{DirectIndex, DirectIndexReader};
@@ -17,4 +17,4 @@ pub use crate::engine::RodaEngine;
 pub use crate::journal_store::{JournalStore, JournalStoreOptions, StoreJournalReader};
 pub use crate::stage::{OutputCollector, Stage};
 pub use crate::window::Window;
-pub use crate::new_engine::NewEngine;
+pub use crate::stage_engine::StageEngine;

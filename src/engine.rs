@@ -80,7 +80,7 @@ impl RodaEngine {
         let start = Instant::now();
         let mut last_op_count = self.op_counter.total_op_count();
         loop {
-            sleep(Duration::from_millis(100));
+            sleep(Duration::from_millis(1));
             let new_op_count = self.op_counter.total_op_count();
             if new_op_count == last_op_count {
                 break;

@@ -11,6 +11,7 @@ pub struct BookLevelTopEntry {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, Pod, Zeroable)]
 pub struct BookLevelTop {
+    pub ts: u64,
     pub symbol: u64, // or instrument_id
     pub asks: [BookLevelTopEntry; 5],
     pub bids: [BookLevelTopEntry; 5],
@@ -18,6 +19,7 @@ pub struct BookLevelTop {
 
 impl BookLevelTop {
     pub(crate) fn adjust(&mut self, entry: BookLevelEntry) {
+        self.ts = entry.ts;
         let levels = match entry.side {
             b'A' => &mut self.asks,
             b'B' => &mut self.bids,
@@ -66,6 +68,7 @@ impl BookLevelTop {
 impl From<BookLevelEntry> for BookLevelTop {
     fn from(entry: BookLevelEntry) -> Self {
         Self {
+            ts: entry.ts,
             symbol: entry.symbol,
             asks: [BookLevelTopEntry::default(); 5],
             bids: [BookLevelTopEntry::default(); 5],
