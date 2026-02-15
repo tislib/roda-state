@@ -53,7 +53,7 @@ impl LatencyMeasurer {
 
     pub fn measure(&mut self, duration: Duration) {
         self.step += 1;
-        if self.step % self.sample_rate != 0 {
+        if !self.step.is_multiple_of(self.sample_rate) {
             return;
         }
 
@@ -71,7 +71,7 @@ impl LatencyMeasurer {
 
     pub fn measure_with_guard(&mut self) -> LatencyMeasurerGuard<'_> {
         self.step += 1;
-        if self.step % self.sample_rate != 0 {
+        if !self.step.is_multiple_of(self.sample_rate) {
             return LatencyMeasurerGuard {
                 measurer: self,
                 start: None,
@@ -85,7 +85,7 @@ impl LatencyMeasurer {
 
     pub fn step_measure(&mut self) {
         self.step += 1;
-        if self.step % self.sample_rate != 0 {
+        if !self.step.is_multiple_of(self.sample_rate) {
             return;
         }
         let elapsed = self.step_instant.elapsed();
@@ -134,26 +134,6 @@ impl LatencyMeasurer {
             Self::format_duration(stats.p999 as f64),
             Self::format_duration(stats.p9999 as f64),
         )
-    }
-
-    fn format_count(count: u64) -> String {
-        if count < 1000 {
-            count.to_string()
-        } else if count < 1_000_000 {
-            let val = count as f64 / 1000.0;
-            if val == val.floor() {
-                format!("{:.0}k", val)
-            } else {
-                format!("{:.1}k", val)
-            }
-        } else {
-            let val = count as f64 / 1_000_000.0;
-            if val == val.floor() {
-                format!("{:.0}M", val)
-            } else {
-                format!("{:.1}M", val)
-            }
-        }
     }
 
     fn format_duration(nanos: f64) -> String {

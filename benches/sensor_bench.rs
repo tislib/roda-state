@@ -1,9 +1,10 @@
 use bytemuck::{Pod, Zeroable};
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use roda_state::StageEngine;
 use roda_state::pipe;
 use roda_state::pipe::{delta, stateful};
 use std::collections::HashMap;
+use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 #[repr(C)]
@@ -115,8 +116,8 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
                     .add_stage_with_capacity(
                         num_readings + 1000,
                         pipe![stateful(
-                            |r| SensorKey::from_reading(r),
-                            |r| Summary::init(r),
+                            SensorKey::from_reading,
+                            Summary::init,
                             |state, r| state.update(r)
                         )],
                     )
@@ -125,15 +126,15 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
                         pipe![delta(
                             |s: &Summary| s.sensor_id,
                             |curr, prev| {
-                                if let Some(p) = prev {
-                                    if curr.avg > p.avg * 1.5 {
-                                        return Some(Alert {
-                                            sensor_id: curr.sensor_id,
-                                            timestamp: curr.timestamp,
-                                            severity: 1,
-                                            ..Default::default()
-                                        });
-                                    }
+                                if let Some(p) = prev
+                                    && curr.avg > p.avg * 1.5
+                                {
+                                    return Some(Alert {
+                                        sensor_id: curr.sensor_id,
+                                        timestamp: curr.timestamp,
+                                        severity: 1,
+                                        ..Default::default()
+                                    });
                                 }
                                 None
                             }
@@ -169,15 +170,15 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
                 summary.update(r);
                 let curr_summary = *summary;
 
-                if let Some(prev) = last_summaries.get(&r.sensor_id) {
-                    if curr_summary.avg > prev.avg * 1.5 {
-                        alerts.push(Alert {
-                            sensor_id: curr_summary.sensor_id,
-                            timestamp: curr_summary.timestamp,
-                            severity: 1,
-                            ..Default::default()
-                        });
-                    }
+                if let Some(prev) = last_summaries.get(&r.sensor_id)
+                    && curr_summary.avg > prev.avg * 1.5
+                {
+                    alerts.push(Alert {
+                        sensor_id: curr_summary.sensor_id,
+                        timestamp: curr_summary.timestamp,
+                        severity: 1,
+                        ..Default::default()
+                    });
                 }
                 last_summaries.insert(r.sensor_id, curr_summary);
             }

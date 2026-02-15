@@ -55,12 +55,12 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 
         self.engine.run_worker(move || {
             // Process all available data
-            if reader.next() {
-                if let Some(data) = reader.get() {
-                    stage.process(data, &mut |out: NextOut| {
-                        next_store.append(out);
-                    });
-                }
+            if reader.next()
+                && let Some(data) = reader.get()
+            {
+                stage.process(data, &mut |out: NextOut| {
+                    next_store.append(out);
+                });
             }
             // Yield to prevent 100% CPU usage when no data is available
             std::thread::yield_now();
@@ -117,6 +117,12 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> Appendable<In> for StageEngine<In, Out> {
     fn append(&mut self, state: In) {
         self.send(state);
+    }
+}
+
+impl<T: Pod + Send + 'static> Default for StageEngine<T, T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

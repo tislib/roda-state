@@ -1,4 +1,4 @@
-use bytemuck::{Pod, Zeroable};
+use bytemuck::Pod;
 use memmap2::{MmapMut, MmapOptions};
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -136,6 +136,7 @@ unsafe impl Send for JournalMmap {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytemuck::Zeroable;
     use std::thread;
     use std::time::Duration;
 
@@ -217,7 +218,7 @@ mod tests {
                 if current_idx > last_idx {
                     let val: u32 = *reader.read(last_idx);
                     assert_eq!(val, count);
-                    last_idx = current_idx;
+                    last_idx += std::mem::size_of::<u32>();
                     count += 1;
                 }
                 thread::yield_now();

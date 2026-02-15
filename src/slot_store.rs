@@ -5,7 +5,6 @@ use crate::storage::slot_mmap::SlotMmap;
 use bytemuck::Pod;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
 
 pub struct SlotStore<State: Pod + Send> {
     storage: SlotMmap<State>,
@@ -15,7 +14,6 @@ pub struct SlotStore<State: Pod + Send> {
 
 pub struct SlotStoreReader<State: Pod + Send> {
     storage: SlotMmap<State>,
-    op_count: Arc<AtomicU64>,
 }
 
 pub struct SlotStoreOptions {
@@ -55,7 +53,6 @@ impl<State: Pod + Send> SlotStore<State> {
 
     pub fn reader(&self) -> SlotStoreReader<State> {
         SlotStoreReader {
-            op_count: self.op_counter.new_counter(),
             storage: self.storage.reader(),
         }
     }

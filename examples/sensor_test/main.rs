@@ -1,10 +1,9 @@
 mod models;
 
 use crate::models::{Alert, Reading, SensorKey, Summary};
-use bytemuck::{Pod, Zeroable};
 use roda_state::StageEngine;
 use roda_state::pipe;
-use roda_state::pipe::{delta, inspect, stateful};
+use roda_state::pipe::{delta, stateful};
 use std::time::Duration;
 
 fn main() {
@@ -28,15 +27,15 @@ fn main() {
             delta(
                 |s: &Summary| s.sensor_id,
                 |curr, prev| {
-                    if let Some(p) = prev {
-                        if curr.avg > p.avg * 1.5 {
-                            return Some(Alert {
-                                sensor_id: curr.sensor_id,
-                                timestamp: curr.timestamp,
-                                severity: 1,
-                                ..Default::default()
-                            });
-                        }
+                    if let Some(p) = prev
+                        && curr.avg > p.avg * 1.5
+                    {
+                        return Some(Alert {
+                            sensor_id: curr.sensor_id,
+                            timestamp: curr.timestamp,
+                            severity: 1,
+                            ..Default::default()
+                        });
                     }
                     None
                 }

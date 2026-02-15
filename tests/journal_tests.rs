@@ -1,6 +1,5 @@
 use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::components::{Appendable, IterativeReadable};
 
 #[test]
 #[should_panic(expected = "Store is full")]

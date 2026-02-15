@@ -11,11 +11,9 @@ where
         let key = key_fn(&curr);
         let prev = last_values.get(&key);
 
-        if let Some(p) = prev {
-            if *p == curr {
-                // Value hasn't changed; suppress the event
-                return None;
-            }
+        if prev == Some(&curr) {
+            // Value hasn't changed; suppress the event
+            return None;
         }
 
         // Value changed or is new; update cache and emit

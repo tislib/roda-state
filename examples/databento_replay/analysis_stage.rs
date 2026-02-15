@@ -28,11 +28,13 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
         C: OutputCollector<ImbalanceSignal>,
     {
         self.counter += 1;
-        let book_top = self.book_tops.entry(entry.symbol).or_insert_with(|| {
-            let mut bt = BookLevelTop::default();
-            bt.symbol = entry.symbol;
-            bt
-        });
+        let book_top = self
+            .book_tops
+            .entry(entry.symbol)
+            .or_insert_with(|| BookLevelTop {
+                symbol: entry.symbol,
+                ..Default::default()
+            });
         book_top.adjust(entry);
 
         let mut bid_vol = 0.0;

@@ -11,7 +11,11 @@ pub struct Reading {
 
 impl Reading {
     pub fn from(sensor_id: u64, value: f64, timestamp: u64) -> Self {
-        Self { sensor_id, value, timestamp }
+        Self {
+            sensor_id,
+            value,
+            timestamp,
+        }
     }
 }
 
@@ -61,8 +65,12 @@ impl Summary {
 
     #[inline(always)]
     pub fn update(&mut self, r: Reading) {
-        if r.value < self.min { self.min = r.value; }
-        if r.value > self.max { self.max = r.value; }
+        if r.value < self.min {
+            self.min = r.value;
+        }
+        if r.value > self.max {
+            self.max = r.value;
+        }
         // Online average calculation
         self.avg = (self.avg * self.count as f64 + r.value) / (self.count + 1) as f64;
         self.count += 1;

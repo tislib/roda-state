@@ -11,7 +11,6 @@ pub struct SlotMmap<T: Pod> {
     ptr: *mut u8,
     num_slots: usize,
     slot_size: usize,
-    read_only: bool,
     _marker: std::marker::PhantomData<T>,
 }
 
@@ -40,7 +39,6 @@ impl<T: Pod> SlotMmap<T> {
             num_slots,
             slot_size,
             _mmap: Arc::new(mmap),
-            read_only: false,
             _marker: std::marker::PhantomData,
         })
     }
@@ -60,7 +58,6 @@ impl<T: Pod> SlotMmap<T> {
             num_slots,
             slot_size,
             _mmap: Arc::new(mmap),
-            read_only: false,
             _marker: std::marker::PhantomData,
         })
     }
@@ -104,7 +101,7 @@ impl<T: Pod> SlotMmap<T> {
                 let v1 = (*version_ptr).load(Ordering::Relaxed);
                 std::sync::atomic::fence(Ordering::SeqCst);
 
-                if v1 % 2 == 0 {
+                if v1.is_multiple_of(2) {
                     let mut data: T = std::mem::zeroed();
                     std::ptr::copy_nonoverlapping(
                         data_ptr,
@@ -130,7 +127,6 @@ impl<T: Pod> SlotMmap<T> {
             ptr: self.ptr,
             num_slots: self.num_slots,
             slot_size: self.slot_size,
-            read_only: true,
             _marker: std::marker::PhantomData,
         }
     }

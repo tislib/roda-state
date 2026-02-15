@@ -3,16 +3,9 @@ use crate::light_mbo_entry::LightMboEntry;
 use roda_state::stage::{OutputCollector, Stage};
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct AggregationStage {
     book_volumes: HashMap<(u32, u8, i64), BookLevelEntry>,
-}
-
-impl Default for AggregationStage {
-    fn default() -> Self {
-        Self {
-            book_volumes: HashMap::new(),
-        }
-    }
 }
 
 impl Stage<LightMboEntry, BookLevelEntry> for AggregationStage {

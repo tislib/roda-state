@@ -31,16 +31,16 @@ fn main() {
         delta(
             |s: &Summary| s.sensor_id,
             |curr, prev| {
-                if let Some(p) = prev {
+                if let Some(p) = prev
+                    && curr.avg > p.avg * 1.5
+                {
                     // Logic: Alert if the average jumps by more than 50%
-                    if curr.avg > p.avg * 1.5 {
-                        return Some(Alert {
-                            sensor_id: curr.sensor_id,
-                            timestamp: curr.timestamp,
-                            severity: 1,
-                            ..Default::default()
-                        });
-                    }
+                    return Some(Alert {
+                        sensor_id: curr.sensor_id,
+                        timestamp: curr.timestamp,
+                        severity: 1,
+                        ..Default::default()
+                    });
                 }
                 None
             }

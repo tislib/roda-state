@@ -1,7 +1,8 @@
 use bytemuck::{Pod, Zeroable};
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use roda_state::measure::LatencyMeasurer;
 use roda_state::{Aggregator, JournalStoreOptions, RodaEngine, Window};
+use std::hint::black_box;
 
 #[derive(Clone, Copy, Zeroable, Pod, Default)]
 #[repr(C)]
@@ -67,7 +68,7 @@ fn bench_index(c: &mut Criterion) {
         let mut i = 0u32;
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            black_box(index_reader.get(&(i % 10000)));
+            black_box(index_reader.get(&(i % 10_000)));
             i += 1;
         });
     });

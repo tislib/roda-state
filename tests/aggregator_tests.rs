@@ -1,6 +1,5 @@
 use bytemuck::{Pod, Zeroable};
 use roda_state::JournalStoreOptions;
-use roda_state::components::{Appendable, IterativeReadable};
 use roda_state::{Aggregator, RodaEngine};
 
 #[repr(C)]

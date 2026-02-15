@@ -13,7 +13,7 @@ struct ComplexKey {
 
 #[test]
 fn test_index_multiple_values() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -38,7 +38,7 @@ fn test_index_multiple_values() {
 
 #[test]
 fn test_multiple_indices_on_same_store() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -62,7 +62,7 @@ fn test_multiple_indices_on_same_store() {
 
 #[test]
 fn test_index_complex_key() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -95,7 +95,7 @@ fn test_index_complex_key() {
 
 #[test]
 fn test_index_shallow_clone_sharing() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -114,7 +114,7 @@ fn test_index_shallow_clone_sharing() {
 
 #[test]
 fn test_index_collision_overwrite() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -136,7 +136,7 @@ fn test_index_collision_overwrite() {
 
 #[test]
 fn test_index_not_found() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -268,7 +268,7 @@ fn test_multiple_workers_reading_index_only_original_computes() {
 
 #[test]
 fn test_index_iterator() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test",
         size: 1024,
@@ -302,7 +302,7 @@ struct PriceLevel {
 
 #[test]
 fn test_index_navigation() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<PriceLevel>(JournalStoreOptions {
         name: "test_nav",
         size: 1024,
@@ -359,7 +359,7 @@ fn test_index_navigation() {
 
 #[test]
 fn test_index_navigation_rev() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<PriceLevel>(JournalStoreOptions {
         name: "test_nav_rev",
         size: 1024,

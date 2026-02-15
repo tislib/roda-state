@@ -1,6 +1,5 @@
 use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::components::{Appendable, IterativeReadable};
 
 #[test]
 fn test_push_then_read_single() {
