@@ -3,7 +3,7 @@ mod models;
 use models::{Alert, Reading, SensorKey, Summary};
 use roda_state::StageEngine;
 use roda_state::pipe;
-use roda_state::pipe::{dedup_by, delta, inspect, stateful};
+use roda_state::{dedup_by, delta, inspect, stateful};
 use std::time::Duration;
 
 fn main() {

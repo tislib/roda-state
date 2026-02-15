@@ -220,7 +220,6 @@ fn test_worker_panic_on_drop() {
 }
 
 #[test]
-#[ignore]
 fn test_long_pipeline_heavy_load() {
     let stages = 10;
     let items = 5000;

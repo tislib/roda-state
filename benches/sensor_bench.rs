@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, criterion_group, criterion_main};
 use roda_state::StageEngine;
 use roda_state::pipe;
-use roda_state::pipe::{delta, stateful};
+use roda_state::{delta, stateful};
 use std::collections::HashMap;
 use std::hint::black_box;
 use std::time::{Duration, Instant};

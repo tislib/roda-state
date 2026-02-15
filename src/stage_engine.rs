@@ -12,6 +12,7 @@ pub struct StageEngine<In: Pod + Send + 'static, Out: Pod + Send + 'static> {
     input_store: JournalStore<In>,
     output_reader: StoreJournalReader<Out>,
     stage_count: usize,
+    default_capacity: usize,
 }
 
 impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
@@ -22,7 +23,8 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         self,
         stage: S,
     ) -> StageEngine<In, NextOut> {
-        self.add_stage_with_capacity(1024, stage)
+        let capacity = self.default_capacity;
+        self.add_stage_with_capacity(capacity, stage)
     }
 
     /// Adds a new stage to the pipeline with a specific capacity for the output store.
@@ -54,16 +56,16 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
-            // Process all available data
-            if reader.next()
-                && let Some(data) = reader.get()
-            {
-                stage.process(data, &mut |out: NextOut| {
-                    next_store.append(out);
-                });
+            if reader.next() {
+                if let Some(data) = reader.get() {
+                    stage.process(data, &mut |out: NextOut| {
+                        next_store.append(out);
+                    });
+                }
+            } else {
+                // Yield to prevent 100% CPU usage when no data is available
+                std::thread::yield_now();
             }
-            // Yield to prevent 100% CPU usage when no data is available
-            std::thread::yield_now();
         });
 
         StageEngine {
@@ -71,6 +73,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
             input_store: self.input_store,
             output_reader: next_reader,
             stage_count: self.stage_count,
+            default_capacity: self.default_capacity,
         }
     }
 
@@ -86,6 +89,9 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         loop {
             if let Some(data) = self.try_receive() {
                 return Some(data);
+            }
+            if self.engine.is_any_worker_panicked() {
+                panic!("Worker panicked, pipeline is broken");
             }
             thread::yield_now();
         }
@@ -148,6 +154,7 @@ impl<T: Pod + Send + 'static> StageEngine<T, T> {
             input_store,
             output_reader,
             stage_count: 0,
+            default_capacity: capacity,
         }
     }
 }

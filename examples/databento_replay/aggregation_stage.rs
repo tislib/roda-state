@@ -1,6 +1,6 @@
 use crate::book_level_entry::BookLevelEntry;
 use crate::light_mbo_entry::LightMboEntry;
-use roda_state::stage::{OutputCollector, Stage};
+use roda_state::{OutputCollector, Stage};
 use std::collections::HashMap;
 
 #[derive(Default)]

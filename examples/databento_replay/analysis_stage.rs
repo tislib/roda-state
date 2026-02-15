@@ -1,7 +1,7 @@
 use crate::book_level_entry::BookLevelEntry;
 use crate::book_level_top::BookLevelTop;
 use crate::imbalance_signal::ImbalanceSignal;
-use roda_state::stage::{OutputCollector, Stage};
+use roda_state::{OutputCollector, Stage};
 use spdlog::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

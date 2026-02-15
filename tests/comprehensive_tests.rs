@@ -1,6 +1,5 @@
 use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::components::{Appendable, IterativeReadable};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
@@ -54,26 +53,6 @@ fn test_store_reader_edge_cases() {
     // 11. with_at and with_last
     assert_eq!(reader.with_at(0, |&v| v), Some(42));
     assert_eq!(reader.with_last(|&v| v), Some(42));
-}
-
-#[test]
-fn test_index_reader_with_and_get() {
-    let mut engine = RodaEngine::new();
-    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
-        name: "index_with",
-        size: 1024,
-        in_memory: true,
-    });
-    let index = store.direct_index::<u32>();
-    store.append(123);
-    index.compute(|&v| v);
-    let reader = index.reader();
-
-    assert_eq!(reader.get(&123), Some(123));
-    assert_eq!(reader.with(&123, |&v| v), Some(123));
-
-    assert_eq!(reader.get(&456), None);
-    assert_eq!(reader.with(&456, |_| 1), None);
 }
 
 #[test]
@@ -173,133 +152,4 @@ fn test_store_concurrent_load() {
     }
 
     assert_eq!(total_read, num_readers * num_pushes);
-}
-
-#[test]
-fn test_index_load_and_edge_cases() {
-    let mut engine = RodaEngine::new();
-    let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
-        name: "index_edge",
-        size: 1024 * 1024,
-        in_memory: true,
-    });
-    let index = store.direct_index::<u64>();
-    let index_reader = index.reader();
-
-    // 1. compute on empty store
-    index.compute(|&v| v);
-    assert_eq!(index_reader.get(&0), None);
-
-    // 2. Load test
-    let num_items = 1000;
-    for i in 0..num_items {
-        store.append(i as u64);
-        index.compute(|&v| v);
-    }
-
-    for i in 0..num_items {
-        assert_eq!(index_reader.get(&(i as u64)), Some(i as u64));
-    }
-
-    // 3. Duplicate keys (overwrites)
-    store.append(100); // 1001st item
-    index.compute(|&v| v); // index the 100th -> 100 (key 100)
-
-    store.append(10000); // 1002nd item
-    index.compute(|_v| 100); // Force key 100 to map to value 10000
-    assert_eq!(index_reader.get(&100), Some(10000));
-}
-
-#[test]
-fn test_index_concurrent_compute() {
-    let engine = Arc::new(RodaEngine::new());
-    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
-        name: "index_concurrent",
-        size: 1024 * 1024,
-        in_memory: true,
-    });
-    let index = std::sync::Mutex::new(store.direct_index::<u32>());
-    let index = Arc::new(index);
-
-    let num_items = 5000;
-    for i in 0..num_items {
-        store.append(i as u32);
-    }
-
-    let num_workers = 5;
-    let barrier = Arc::new(Barrier::new(num_workers));
-    let mut workers = Vec::new();
-
-    for _ in 0..num_workers {
-        let b = barrier.clone();
-        let idx = index.clone();
-        workers.push(thread::spawn(move || {
-            b.wait();
-            loop {
-                let mut found = false;
-                {
-                    let idx_locked = idx.lock().unwrap();
-                    idx_locked.compute(|&v| {
-                        found = true;
-                        v
-                    });
-                }
-                if !found {
-                    break;
-                }
-            }
-        }));
-    }
-
-    for worker in workers {
-        worker.join().unwrap();
-    }
-
-    let index_reader = index.lock().unwrap().reader();
-    for i in 0..num_items {
-        assert_eq!(index_reader.get(&(i as u32)), Some(i as u32));
-    }
-}
-
-#[test]
-fn test_index_reader_concurrent_get() {
-    let mut engine = RodaEngine::new();
-    let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
-        name: "index_read_concurrent",
-        size: 1024 * 1024,
-        in_memory: true,
-    });
-    let index = store.direct_index::<u32>();
-
-    let num_items = 1000;
-    for i in 0..num_items {
-        store.append(i as u32);
-        index.compute(|&v| v);
-    }
-
-    let reader = Arc::new(index.reader());
-    let num_threads = 8;
-    let mut threads = Vec::new();
-    let barrier = Arc::new(Barrier::new(num_threads));
-
-    for _t in 0..num_threads {
-        let r = reader.clone();
-        let b = barrier.clone();
-        threads.push(thread::spawn(move || {
-            b.wait();
-            for i in 0..num_items {
-                // Mix get and with
-                if i % 2 == 0 {
-                    assert_eq!(r.get(&(i as u32)), Some(i as u32));
-                } else {
-                    let val = r.with(&(i as u32), |&v| v);
-                    assert_eq!(val, Some(i as u32));
-                }
-            }
-        }));
-    }
-
-    for thread in threads {
-        thread.join().unwrap();
-    }
 }

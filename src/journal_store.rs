@@ -74,15 +74,6 @@ impl<State: Pod + Send> JournalStore<State> {
         }
     }
 
-    pub fn direct_index<Key: Clone + Ord + Send>(
-        &self,
-    ) -> crate::direct_index::DirectIndex<Key, State, StoreJournalReader<State>> {
-        crate::direct_index::DirectIndex {
-            map: std::sync::Arc::new(crossbeam_skiplist::SkipMap::new()),
-            reader: self.reader(),
-        }
-    }
-
     pub fn size(&self) -> usize {
         self.storage.get_write_index() / size_of::<State>()
     }

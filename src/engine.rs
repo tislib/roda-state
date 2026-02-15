@@ -91,6 +91,15 @@ impl RodaEngine {
             last_op_count = new_op_count;
         }
     }
+
+    pub fn is_any_worker_panicked(&self) -> bool {
+        for handler in &self.worker_handlers {
+            if handler.is_finished() && self.running.load(std::sync::atomic::Ordering::Relaxed) {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Default for RodaEngine {

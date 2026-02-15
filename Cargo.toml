@@ -27,10 +27,6 @@ name = "store_bench"
 harness = false
 
 [[bench]]
-name = "comprehensive_bench"
-harness = false
-
-[[bench]]
 name = "sensor_bench"
 harness = false
 

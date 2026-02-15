@@ -1,6 +1,6 @@
 use assert_no_alloc::*;
+use roda_state::JournalStoreOptions;
 use roda_state::RodaEngine;
-use roda_state::journal_store::JournalStoreOptions;
 
 #[cfg(debug_assertions)]
 #[global_allocator]
@@ -102,17 +102,4 @@ fn test_store_reader_get_last_no_alloc() {
     assert_no_alloc(|| {
         let _ = reader.get_last();
     });
-}
-
-#[test]
-fn test_store_direct_index_allocations_allowed() {
-    let mut engine = RodaEngine::new();
-    let store = engine.new_journal_store::<u32>(JournalStoreOptions {
-        name: "direct_index_alloc",
-        size: 1024,
-        in_memory: true,
-    });
-
-    // direct_index now allocates because it uses crossbeam-skiplist
-    let _ = store.direct_index::<u64>();
 }

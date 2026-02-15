@@ -1,6 +1,5 @@
 use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use roda_state::measure::LatencyMeasurer;
 use roda_state::{JournalStoreOptions, RodaEngine};
 use std::hint::black_box;
 
