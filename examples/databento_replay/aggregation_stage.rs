@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use roda_state::stage::{Stage, OutputCollector};
-use crate::light_mbo_entry::LightMboEntry;
 use crate::book_level_entry::BookLevelEntry;
+use crate::light_mbo_entry::LightMboEntry;
+use roda_state::stage::{OutputCollector, Stage};
+use std::collections::HashMap;
 
 pub struct AggregationStage {
     book_volumes: HashMap<(u32, u8, i64), BookLevelEntry>,

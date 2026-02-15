@@ -67,10 +67,7 @@ where
 
 pub trait StageExt<In: Pod + Send, Mid: Pod + Send>: Stage<In, Mid> {
     #[inline(always)]
-    fn pipe<Out: Pod + Send, S2: Stage<Mid, Out>>(
-        self,
-        s2: S2,
-    ) -> Pipeline<Self, S2, In, Mid, Out>
+    fn pipe<Out: Pod + Send, S2: Stage<Mid, Out>>(self, s2: S2) -> Pipeline<Self, S2, In, Mid, Out>
     where
         Self: Sized,
     {
@@ -107,10 +104,7 @@ mod tests {
 
     #[test]
     fn test_pipe_closures() {
-        let mut p = pipe![
-            |x: u32| Some(x as u64),
-            |x: u64| Some(x as u8),
-        ];
+        let mut p = pipe![|x: u32| Some(x as u64), |x: u64| Some(x as u8),];
 
         let mut out = Vec::new();
         p.process(100u32, &mut |x: u8| out.push(x));

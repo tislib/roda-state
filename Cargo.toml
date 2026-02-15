@@ -30,6 +30,10 @@ harness = false
 name = "comprehensive_bench"
 harness = false
 
+[[bench]]
+name = "sensor_bench"
+harness = false
+
 [profile.profiling]
 inherits = "release"
 debug = true

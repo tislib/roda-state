@@ -49,8 +49,14 @@ impl BookLevelTop {
         let is_ask = entry.side == b'A';
 
         let pos = levels.iter().position(|l| {
-            if l.price == 0 { return true; }
-            if is_ask { entry.price < l.price } else { entry.price > l.price }
+            if l.price == 0 {
+                return true;
+            }
+            if is_ask {
+                entry.price < l.price
+            } else {
+                entry.price > l.price
+            }
         });
 
         if let Some(i) = pos {

@@ -4,8 +4,8 @@ use crate::storage::slot_mmap::SlotMmap;
 // Using the new SlotMmap logic
 use bytemuck::Pod;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 pub struct SlotStore<State: Pod + Send> {
     storage: SlotMmap<State>,

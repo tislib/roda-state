@@ -5,13 +5,13 @@ use std::time::Duration;
 
 use roda_state::StageEngine;
 
-mod book_level_entry;
-mod importer;
-mod light_mbo_entry;
-mod book_level_top;
-mod imbalance_signal;
 mod aggregation_stage;
 mod analysis_stage;
+mod book_level_entry;
+mod book_level_top;
+mod imbalance_signal;
+mod importer;
+mod light_mbo_entry;
 
 use crate::aggregation_stage::AggregationStage;
 use crate::analysis_stage::AnalysisStage;
@@ -25,7 +25,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    
+
     info!("[System] Booting Roda Data Bento Replay with StageEngine...");
 
     // 1. Initialize StageEngine with enough capacity for the input

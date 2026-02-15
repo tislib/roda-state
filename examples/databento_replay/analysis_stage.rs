@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use spdlog::prelude::*;
-use roda_state::stage::{Stage, OutputCollector};
 use crate::book_level_entry::BookLevelEntry;
 use crate::book_level_top::BookLevelTop;
 use crate::imbalance_signal::ImbalanceSignal;
+use roda_state::stage::{OutputCollector, Stage};
+use spdlog::prelude::*;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 pub struct AnalysisStage {
     book_tops: HashMap<u64, BookLevelTop>,
@@ -34,18 +34,22 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
             bt
         });
         book_top.adjust(entry);
-        
+
         let mut bid_vol = 0.0;
         let mut ask_vol = 0.0;
 
         for (i, level) in book_top.bids.iter().enumerate() {
-            if level.price == 0 { break; }
+            if level.price == 0 {
+                break;
+            }
             let weight = 1.0 - (i as f64 * 0.2);
             bid_vol += level.size as f64 * weight;
         }
 
         for (i, level) in book_top.asks.iter().enumerate() {
-            if level.price == 0 { break; }
+            if level.price == 0 {
+                break;
+            }
             let weight = 1.0 - (i as f64 * 0.2);
             ask_vol += level.size as f64 * weight;
         }
@@ -53,7 +57,7 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
         let total_vol = bid_vol + ask_vol;
         if total_vol > 0.0 {
             let imbalance = (bid_vol - ask_vol) / total_vol;
-            
+
             // Produce the signal
             collector.push(ImbalanceSignal {
                 ts: entry.ts,
@@ -76,6 +80,9 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
 
 impl Drop for AnalysisStage {
     fn drop(&mut self) {
-        info!("[System] Final Imbalance Signals processed: {}", self.counter);
+        info!(
+            "[System] Final Imbalance Signals processed: {}",
+            self.counter
+        );
     }
 }

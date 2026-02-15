@@ -42,18 +42,20 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         // but for a pipeline that lasts the lifetime of the process, this is acceptable.
         let name = Box::leak(format!("stage_{}", stage_idx).into_boxed_str());
 
-        let mut next_store = self.engine.new_journal_store::<NextOut>(JournalStoreOptions {
-            name,
-            size: capacity,
-            in_memory: true,
-        });
+        let mut next_store = self
+            .engine
+            .new_journal_store::<NextOut>(JournalStoreOptions {
+                name,
+                size: capacity,
+                in_memory: true,
+            });
 
         let reader = self.output_reader;
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
             // Process all available data
-            while reader.next() {
+            if reader.next() {
                 if let Some(data) = reader.get() {
                     stage.process(data, &mut |out: NextOut| {
                         next_store.append(out);
@@ -82,13 +84,19 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
     /// This will block/poll until data is available.
     pub fn receive(&self) -> Option<Out> {
         loop {
-            if self.output_reader.next() {
-                if let Some(data) = self.output_reader.get() {
-                    return Some(data);
-                }
+            if let Some(data) = self.try_receive() {
+                return Some(data);
             }
             thread::yield_now();
         }
+    }
+
+    /// Tries to receive data from the end of the pipeline without blocking.
+    pub fn try_receive(&self) -> Option<Out> {
+        if self.output_reader.next() {
+            return self.output_reader.get();
+        }
+        None
     }
 
     /// Returns the number of items in the output store.
@@ -150,7 +158,7 @@ mod tests {
             .add_stage(|x: u64| Some(x as u8));
 
         engine.send(100u32);
-        
+
         let result = engine.receive();
         assert_eq!(result, Some(100u8));
     }
@@ -180,12 +188,11 @@ mod tests {
 
     #[test]
     fn test_engine_concurrency() {
-        let mut engine = StageEngine::<u32, u32>::new()
-            .add_stage(|x: u32| {
-                // Simulate some work
-                thread::sleep(Duration::from_millis(10));
-                Some(x * 2)
-            });
+        let mut engine = StageEngine::<u32, u32>::new().add_stage(|x: u32| {
+            // Simulate some work
+            thread::sleep(Duration::from_millis(10));
+            Some(x * 2)
+        });
 
         engine.send(1);
         engine.send(2);
