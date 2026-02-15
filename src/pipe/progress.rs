@@ -1,5 +1,5 @@
-use std::time::Instant;
 use spdlog::info;
+use std::time::Instant;
 
 /// A pipe that logs progress information.
 pub fn progress<T>(name: impl Into<String>, interval: usize) -> impl FnMut(T) -> Option<T>
@@ -8,13 +8,13 @@ where
 {
     assert!(interval > 0, "interval must be greater than 0");
     let name = name.into();
-    let mut count = 0;
+    let mut count: usize = 0;
     let mut last_instant = Instant::now();
     let start_instant = last_instant;
 
     move |item| {
         count += 1;
-        if count % interval == 0 {
+        if count.is_multiple_of(interval) {
             let now = Instant::now();
             let elapsed = now.duration_since(last_instant);
             let total_elapsed = now.duration_since(start_instant);

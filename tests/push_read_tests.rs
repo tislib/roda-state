@@ -3,7 +3,7 @@ use roda_state::RodaEngine;
 
 #[test]
 fn test_push_then_read_single() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test1",
         size: 1024,
@@ -19,7 +19,7 @@ fn test_push_then_read_single() {
 
 #[test]
 fn test_multiple_push_read_in_order() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test2",
         size: 1024,
@@ -39,7 +39,7 @@ fn test_multiple_push_read_in_order() {
 
 #[test]
 fn test_interleaved_push_and_read() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test3",
         size: 1024,
@@ -62,7 +62,7 @@ fn test_interleaved_push_and_read() {
 
 #[test]
 fn test_stores_are_isolated_by_type() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
 
     let mut u_store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "u32",
@@ -93,7 +93,7 @@ fn test_stores_are_isolated_by_type() {
 
 #[test]
 fn test_push_after_partial_reads() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "test4",
         size: 1024,

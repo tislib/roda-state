@@ -5,7 +5,7 @@ use std::thread;
 
 #[test]
 fn test_store_reader_edge_cases() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u32>(JournalStoreOptions {
         name: "edge_cases",
         size: 1024,
@@ -57,7 +57,7 @@ fn test_store_reader_edge_cases() {
 
 #[test]
 fn test_store_full_capacity() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let num_items = 10;
     let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "full_capacity",
@@ -86,7 +86,7 @@ fn test_store_full_capacity() {
 #[test]
 #[should_panic(expected = "Store is full")]
 fn test_store_overflow_panic() {
-    let mut engine = RodaEngine::new();
+    let engine = RodaEngine::new();
     let mut store = engine.new_journal_store::<u64>(JournalStoreOptions {
         name: "overflow",
         size: 1,

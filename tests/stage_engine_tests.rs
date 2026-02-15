@@ -17,8 +17,8 @@ fn test_basic_pipeline() {
 
 #[test]
 fn test_none_filtering() {
-    let mut engine =
-        StageEngine::<u32, u32>::new().add_stage(|x: u32| if x % 2 == 0 { Some(x) } else { None });
+    let mut engine = StageEngine::<u32, u32>::new()
+        .add_stage(|x: u32| if x.is_multiple_of(2) { Some(x) } else { None });
 
     engine.send(1);
     engine.send(2);

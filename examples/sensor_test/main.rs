@@ -16,11 +16,8 @@ fn main() {
     let mut engine = engine
         .add_stage(pipe![
             // Use stateful helper to handle the HashMap and windowing logic
-            stateful(
-                |r| SensorKey::from_reading(r),
-                |r| Summary::init(r),
-                |state, r| state.update(r)
-            )
+            stateful(SensorKey::from_reading, Summary::init, |state, r| state
+                .update(r))
         ])
         .add_stage(pipe![
             // Use delta to compare current summary to previous summary for the same sensor

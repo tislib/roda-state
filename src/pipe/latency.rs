@@ -53,7 +53,7 @@ where
             self.stage.process(data, collector);
         }
         self.count += 1;
-        if self.count % self.report_interval == 0 {
+        if self.count.is_multiple_of(self.report_interval) {
             info!("[{}] Latency: {}", self.name, self.measurer.format_stats());
         }
     }
