@@ -76,7 +76,7 @@ impl Summary {
     }
 
     #[inline(always)]
-    pub fn update(&mut self, r: Reading) {
+    pub fn update(&mut self, r: &Reading) {
         if r.value < self.min {
             self.min = r.value;
         }
@@ -143,7 +143,7 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
 
                 let start = Instant::now();
                 for &r in &readings {
-                    engine.send(r);
+                    engine.send(&r);
                 }
                 engine.await_idle(Duration::from_secs(5));
                 total_duration += start.elapsed();
@@ -167,7 +167,7 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
                 let key = SensorKey::from_reading(&r);
                 let summary = summaries.entry(key).or_insert_with(|| Summary::init(&r));
 
-                summary.update(r);
+                summary.update(&r);
                 let curr_summary = *summary;
 
                 if let Some(prev) = last_summaries.get(&r.sensor_id)

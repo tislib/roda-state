@@ -29,6 +29,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 
     /// Adds a new stage to the pipeline with a specific capacity for the output store.
     pub fn add_stage_with_capacity<
+        's,
         NextOut: Pod + Send + 'static,
         S: Stage<Out, NextOut> + Send + 'static,
     >(
@@ -56,15 +57,15 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
-            if reader.next() {
-                if let Some(data) = reader.get() {
-                    stage.process(data, &mut |out: NextOut| {
-                        next_store.append(out);
-                    });
-                }
-            } else {
-                // Yield to prevent 100% CPU usage when no data is available
-                std::thread::yield_now();
+            let mut did_work = false;
+            while reader.next() {
+                did_work = true;
+                reader.with(|data| {
+                    stage.process(data, &mut |out: &NextOut| next_store.append(out));
+                });
+            }
+            if !did_work {
+                thread::yield_now();
             }
         });
 
@@ -79,7 +80,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 
     /// Sends data into the start of the pipeline.
     /// Requires &mut self because JournalStore::append requires it (Single-Writer).
-    pub fn send(&mut self, data: In) {
+    pub fn send(&mut self, data: &In) {
         self.input_store.append(data);
     }
 
@@ -121,7 +122,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 }
 
 impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> Appendable<In> for StageEngine<In, Out> {
-    fn append(&mut self, state: In) {
+    fn append(&mut self, state: &In) {
         self.send(state);
     }
 }
@@ -167,10 +168,10 @@ mod tests {
     #[test]
     fn test_new_engine_threaded_pipeline() {
         let mut engine = StageEngine::<u32, u32>::new()
-            .add_stage(|x: u32| Some(x as u64))
-            .add_stage(|x: u64| Some(x as u8));
+            .add_stage(|x: &u32| Some(*x as u64))
+            .add_stage(|x: &u64| Some(*x as u8));
 
-        engine.send(100u32);
+        engine.send(&100u32);
 
         let result = engine.receive();
         assert_eq!(result, Some(100u8));
@@ -180,20 +181,20 @@ mod tests {
     fn test_new_engine_multiple_outputs() {
         struct Duplicate;
         impl Stage<u32, u32> for Duplicate {
-            fn process<C>(&mut self, data: u32, collector: &mut C)
+            fn process<C>(&mut self, data: &u32, collector: &mut C)
             where
                 C: crate::stage::OutputCollector<u32>,
             {
                 collector.push(data);
-                collector.push(data + 1);
+                collector.push(&(data + 1));
             }
         }
 
         let mut engine = StageEngine::<u32, u32>::new()
             .add_stage(Duplicate)
-            .add_stage(|x: u32| Some(x as u64));
+            .add_stage(|x: &u32| Some(*x as u64));
 
-        engine.send(10u32);
+        engine.send(&10u32);
 
         assert_eq!(engine.receive(), Some(10u64));
         assert_eq!(engine.receive(), Some(11u64));
@@ -201,15 +202,15 @@ mod tests {
 
     #[test]
     fn test_engine_concurrency() {
-        let mut engine = StageEngine::<u32, u32>::new().add_stage(|x: u32| {
+        let mut engine = StageEngine::<u32, u32>::new().add_stage(|x: &u32| {
             // Simulate some work
             thread::sleep(Duration::from_millis(10));
-            Some(x * 2)
+            Some(*x * 2)
         });
 
-        engine.send(1);
-        engine.send(2);
-        engine.send(3);
+        engine.send(&1);
+        engine.send(&2);
+        engine.send(&3);
 
         assert_eq!(engine.receive(), Some(2));
         assert_eq!(engine.receive(), Some(4));

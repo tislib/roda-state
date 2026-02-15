@@ -29,7 +29,7 @@ fn bench_push(c: &mut Criterion) {
         let mut val = 0u64;
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            store_u64.append(black_box(val));
+            store_u64.append(black_box(&val));
             val += 1;
         });
     });
@@ -46,7 +46,7 @@ fn bench_push(c: &mut Criterion) {
         let val = LargeState { data: [42; 16] };
         b.iter(|| {
             let _latency_guard = measurer.measure_with_guard();
-            store_large.append(black_box(val));
+            store_large.append(black_box(&val));
         });
     });
     println!("push_128b latency:{}", measurer.format_stats());
@@ -68,7 +68,7 @@ fn bench_fetch(c: &mut Criterion) {
 
     // Pre-fill some data
     for i in 0..10000 {
-        store.append(i as u64);
+        store.append(&(i as u64));
     }
     let reader = store.reader();
 
@@ -97,7 +97,7 @@ fn bench_fetch(c: &mut Criterion) {
         in_memory: true,
     });
     for _ in 0..10000 {
-        store_large.append(LargeState { data: [42; 16] });
+        store_large.append(&LargeState { data: [42; 16] });
     }
     let reader_large = store_large.reader();
 
@@ -138,7 +138,7 @@ fn bench_window(c: &mut Criterion) {
 
     // Pre-fill some data
     for i in 0..10000 {
-        store.append(i as u64);
+        store.append(&(i as u64));
     }
     let reader = store.reader();
 

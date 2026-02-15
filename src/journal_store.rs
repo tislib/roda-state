@@ -52,7 +52,7 @@ impl<State: Pod + Send> JournalStore<State> {
         }
     }
 
-    pub fn append(&mut self, state: State) {
+    pub fn append(&mut self, state: &State) {
         let size = size_of::<State>();
         let current_pos = self.storage.get_write_index();
         assert!(
@@ -62,7 +62,7 @@ impl<State: Pod + Send> JournalStore<State> {
             current_pos,
             size
         );
-        self.storage.append(&state);
+        self.storage.append(state);
     }
 
     pub fn reader(&self) -> StoreJournalReader<State> {
@@ -80,7 +80,7 @@ impl<State: Pod + Send> JournalStore<State> {
 }
 
 impl<State: Pod + Send> Appendable<State> for JournalStore<State> {
-    fn append(&mut self, state: State) {
+    fn append(&mut self, state: &State) {
         self.append(state);
     }
 }

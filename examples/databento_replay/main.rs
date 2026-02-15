@@ -3,7 +3,7 @@ use spdlog::prelude::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use roda_state::{StageEngine, latency, pipe, progress};
+use roda_state::{StageEngine, latency, pipe, progress, track_prev};
 
 mod aggregation_stage;
 mod analysis_stage;
@@ -38,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         30_000_000,
         pipe![
             progress("Aggregation", 10_000_000),
+            track_prev(),
             latency("Aggregation", 10_000_000, 1000, AggregationStage::default())
         ],
     );

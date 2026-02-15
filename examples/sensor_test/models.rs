@@ -77,7 +77,7 @@ impl Summary {
 
     /// Update the existing summary with a new reading.
     #[inline(always)]
-    pub fn update(&mut self, r: Reading) {
+    pub fn update(&mut self, r: &Reading) {
         // Update Min/Max
         if r.value < self.min {
             self.min = r.value;

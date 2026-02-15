@@ -66,7 +66,7 @@ fn main() {
     ];
 
     for r in readings {
-        engine.send(r);
+        engine.send(&r);
     }
 
     // Give workers time to finish processing

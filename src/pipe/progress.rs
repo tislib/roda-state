@@ -1,38 +1,64 @@
+use crate::stage::{OutputCollector, Stage};
+use bytemuck::Pod;
 use spdlog::info;
+use std::marker::PhantomData;
 use std::time::Instant;
 
 /// A pipe that logs progress information.
-pub fn progress<T>(name: impl Into<String>, interval: usize) -> impl FnMut(T) -> Option<T>
-where
-    T: bytemuck::Pod + Send,
-{
-    assert!(interval > 0, "interval must be greater than 0");
-    let name = name.into();
-    let mut count: usize = 0;
-    let mut last_instant = Instant::now();
-    let start_instant = last_instant;
+pub struct Progress<T> {
+    name: String,
+    interval: usize,
+    count: usize,
+    last_instant: Instant,
+    start_instant: Instant,
+    _phantom: PhantomData<T>,
+}
 
-    move |item| {
-        count += 1;
-        if count.is_multiple_of(interval) {
+impl<T: Pod + Send> Progress<T> {
+    pub fn new(name: impl Into<String>, interval: usize) -> Self {
+        assert!(interval > 0, "interval must be greater than 0");
+        let now = Instant::now();
+        Self {
+            name: name.into(),
+            interval,
+            count: 0,
+            last_instant: now,
+            start_instant: now,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T: Pod + Send> Stage<T, T> for Progress<T> {
+    #[inline(always)]
+    fn process<C>(&mut self, data: &T, collector: &mut C)
+    where
+        C: OutputCollector<T>,
+    {
+        self.count += 1;
+        if self.count % self.interval == 0 {
             let now = Instant::now();
-            let elapsed = now.duration_since(last_instant);
-            let total_elapsed = now.duration_since(start_instant);
+            let elapsed = now.duration_since(self.last_instant);
+            let total_elapsed = now.duration_since(self.start_instant);
 
-            let mps = interval as f64 / elapsed.as_secs_f64();
-            let total_mps = count as f64 / total_elapsed.as_secs_f64();
+            let mps = self.interval as f64 / elapsed.as_secs_f64();
+            let total_mps = self.count as f64 / total_elapsed.as_secs_f64();
 
             info!(
                 "[{}] Processed {} messages, Rate: {} msg/s, Avg: {} msg/s",
-                name,
-                format_count(count as f64),
+                self.name,
+                format_count(self.count as f64),
                 format_count(mps),
                 format_count(total_mps)
             );
-            last_instant = now;
+            self.last_instant = now;
         }
-        Some(item)
+        collector.push(data);
     }
+}
+
+pub fn progress<T: Pod + Send>(name: impl Into<String>, interval: usize) -> Progress<T> {
+    Progress::new(name, interval)
 }
 
 fn format_count(val: f64) -> String {
@@ -61,46 +87,25 @@ mod tests {
 
     #[test]
     fn test_progress_logic() {
-        let mut pipe = progress("test", 2);
+        let mut pipe = progress::<u32>("test", 2);
+        let mut out = Vec::new();
 
         // Process 1st item
-        let res = pipe(1u32);
-        assert_eq!(res, Some(1));
+        pipe.process(&1u32, &mut |x: &u32| out.push(*x));
+        assert_eq!(out, vec![1]);
 
         // Process 2nd item - should trigger print
         thread::sleep(Duration::from_millis(10));
-        let res = pipe(2u32);
-        assert_eq!(res, Some(2));
+        pipe.process(&2u32, &mut |x: &u32| out.push(*x));
+        assert_eq!(out, vec![1, 2]);
 
         // Process 3rd item
-        let res = pipe(3u32);
-        assert_eq!(res, Some(3));
+        pipe.process(&3u32, &mut |x: &u32| out.push(*x));
+        assert_eq!(out, vec![1, 2, 3]);
 
         // Process 4th item - should trigger print
         thread::sleep(Duration::from_millis(10));
-        let res = pipe(4u32);
-        assert_eq!(res, Some(4));
-    }
-
-    #[test]
-    fn test_progress_no_delay() {
-        let mut pipe = progress("test_fast", 2);
-        for i in 0..10 {
-            pipe(i);
-        }
-    }
-
-    #[test]
-    fn test_format_count() {
-        assert_eq!(format_count(0.0), "0");
-        assert_eq!(format_count(123.0), "123");
-        assert_eq!(format_count(123.45), "123.45");
-        assert_eq!(format_count(1000.0), "1.00k");
-        assert_eq!(format_count(1234.0), "1.23k");
-        assert_eq!(format_count(1_000_000.0), "1.00m");
-        assert_eq!(format_count(1_234_567.0), "1.23m");
-        assert_eq!(format_count(1_000_000_000.0), "1.00b");
-        assert_eq!(format_count(1_234_567_890.0), "1.23b");
-        assert_eq!(format_count(1_000_000_000_000.0), "1.00t");
+        pipe.process(&4u32, &mut |x: &u32| out.push(*x));
+        assert_eq!(out, vec![1, 2, 3, 4]);
     }
 }

@@ -23,7 +23,7 @@ impl Default for AnalysisStage {
 }
 
 impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
-    fn process<C>(&mut self, entry: BookLevelEntry, collector: &mut C)
+    fn process<C>(&mut self, entry: &BookLevelEntry, collector: &mut C)
     where
         C: OutputCollector<ImbalanceSignal>,
     {
@@ -35,7 +35,7 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
                 symbol: entry.symbol,
                 ..Default::default()
             });
-        book_top.adjust(entry);
+        book_top.adjust(*entry);
 
         let mut bid_vol = 0.0;
         let mut ask_vol = 0.0;
@@ -61,7 +61,7 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
             let imbalance = (bid_vol - ask_vol) / total_vol;
 
             // Produce the signal
-            collector.push(ImbalanceSignal {
+            collector.push(&ImbalanceSignal {
                 ts: entry.ts,
                 symbol: entry.symbol,
                 imbalance,

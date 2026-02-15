@@ -1,6 +1,6 @@
 use crate::book_level_entry::BookLevelEntry;
 use crate::light_mbo_entry::LightMboEntry;
-use roda_state::{OutputCollector, Stage};
+use roda_state::{OutputCollector, Stage, Tracked};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -8,11 +8,12 @@ pub struct AggregationStage {
     book_volumes: HashMap<(u32, u8, i64), BookLevelEntry>,
 }
 
-impl Stage<LightMboEntry, BookLevelEntry> for AggregationStage {
-    fn process<C>(&mut self, entry: LightMboEntry, collector: &mut C)
+impl Stage<Tracked<LightMboEntry>, BookLevelEntry> for AggregationStage {
+    fn process<C>(&mut self, tracked: &Tracked<LightMboEntry>, collector: &mut C)
     where
         C: OutputCollector<BookLevelEntry>,
     {
+        let entry = tracked.curr;
         let key = (entry.instrument_id, entry.side, entry.price);
         let book = self.book_volumes.entry(key).or_insert(BookLevelEntry {
             ts: entry.ts,
@@ -42,7 +43,7 @@ impl Stage<LightMboEntry, BookLevelEntry> for AggregationStage {
         }
 
         // Always push the update so downstream knows about deletions/volume=0
-        collector.push(*book);
+        collector.push(book);
 
         if book.volume == 0 {
             self.book_volumes.remove(&key);

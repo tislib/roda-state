@@ -49,7 +49,7 @@ fn main() {
     ];
 
     for r in readings {
-        engine.send(r);
+        engine.send(&r);
     }
 
     engine.await_idle(Duration::from_millis(100));

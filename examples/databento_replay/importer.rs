@@ -27,7 +27,7 @@ pub fn import_mbo_file(
     while let Some(record) = decoder.decode_record_ref()? {
         if record.header().rtype == rtype::MBO {
             let msg = record.get::<MboMsg>().unwrap();
-            market_store.append(LightMboEntry::from(msg));
+            market_store.append(&LightMboEntry::from(msg));
             count += 1;
         }
     }

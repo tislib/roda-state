@@ -16,7 +16,7 @@ fn test_store_push_no_alloc() {
     });
 
     assert_no_alloc(|| {
-        store.append(42);
+        store.append(&42);
     });
 }
 
@@ -28,7 +28,7 @@ fn test_store_reader_next_no_alloc() {
         size: 1024,
         in_memory: true,
     });
-    store.append(42);
+    store.append(&42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -44,7 +44,7 @@ fn test_store_reader_get_no_alloc() {
         size: 1024,
         in_memory: true,
     });
-    store.append(42);
+    store.append(&42);
     let reader = store.reader();
     reader.next();
 
@@ -61,8 +61,8 @@ fn test_store_reader_get_window_no_alloc() {
         size: 1024,
         in_memory: true,
     });
-    store.append(42);
-    store.append(43);
+    store.append(&42);
+    store.append(&43);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -80,7 +80,7 @@ fn test_store_reader_get_at_no_alloc() {
         size: 1024,
         in_memory: true,
     });
-    store.append(42);
+    store.append(&42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
@@ -96,7 +96,7 @@ fn test_store_reader_get_last_no_alloc() {
         size: 1024,
         in_memory: true,
     });
-    store.append(42);
+    store.append(&42);
     let reader = store.reader();
 
     assert_no_alloc(|| {
