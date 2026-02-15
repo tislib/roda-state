@@ -3,7 +3,7 @@ use spdlog::prelude::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use roda_state::StageEngine;
+use roda_state::{StageEngine, latency, pipe, progress};
 
 mod aggregation_stage;
 mod analysis_stage;
@@ -34,14 +34,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     engine.enable_latency_stats(true);
 
     // 2. Add Aggregation Stage: LightMboEntry -> BookLevelEntry
-    let engine = engine.add_stage_with_capacity(30_000_000, AggregationStage::default());
+    let engine = engine.add_stage_with_capacity(
+        30_000_000,
+        pipe![
+            progress("Aggregation", 10_000_000),
+            latency("Aggregation", 10_000_000, 1000, AggregationStage::default())
+        ],
+    );
 
     // 3. Add Imbalance Analysis Stage: BookLevelEntry -> ImbalanceSignal
-    let mut engine = engine.add_stage_with_capacity(30_000_000, AnalysisStage::default());
+    let mut engine = engine.add_stage_with_capacity(
+        30_000_000,
+        pipe![
+            progress("Imbalance Analysis", 10_000_000),
+            latency(
+                "Imbalance Analysis",
+                10_000_000,
+                1000,
+                AnalysisStage::default()
+            )
+        ],
+    );
 
-    // 4. Start importing data
-    // import_mbo_file expects &mut impl Appendable<LightMboEntry>
-    // StageEngine<LightMboEntry, ...> implements it.
     import_mbo_file(args.file, &mut engine)?;
 
     info!("[System] Waiting for all stages to finish processing...");

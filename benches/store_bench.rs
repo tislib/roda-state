@@ -2,6 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use roda_state::{JournalStoreOptions, RodaEngine};
 use std::hint::black_box;
+use roda_state::measure::LatencyMeasurer;
 
 #[derive(Clone, Copy, Zeroable, Pod)]
 #[repr(C)]
