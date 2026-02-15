@@ -1,13 +1,18 @@
-pub mod aggregator;
-pub mod components;
-pub mod engine;
-pub mod index;
+mod components;
+mod engine;
+mod journal_store;
+mod macros;
+pub mod measure;
+mod op_counter;
+mod pipe;
+mod slot_store;
+mod stage;
+mod stage_engine;
 mod storage;
-pub mod store;
-pub mod window;
 
-pub use crate::aggregator::Aggregator;
+pub use crate::components::*;
 pub use crate::engine::RodaEngine;
-pub use crate::index::{DirectIndex, DirectIndexReader};
-pub use crate::store::{StoreJournal, StoreJournalReader};
-pub use crate::window::Window;
+pub use crate::journal_store::{JournalStore, JournalStoreOptions, StoreJournalReader};
+pub use crate::pipe::*;
+pub use crate::stage::{OutputCollector, Stage, StageExt};
+pub use crate::stage_engine::StageEngine;
