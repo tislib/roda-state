@@ -3,7 +3,7 @@ use spdlog::prelude::*;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use roda_state::{StageEngine, latency, pipe, progress, track_prev};
+use roda_state::{StageEngine, delta, latency, pipe, progress, stateful, track_prev};
 
 mod aggregation_stage;
 mod analysis_stage;
@@ -11,10 +11,13 @@ mod book_level_entry;
 mod book_level_top;
 mod imbalance_signal;
 mod importer;
+mod light_mbo_delta;
 mod light_mbo_entry;
 
-use crate::aggregation_stage::AggregationStage;
 use crate::analysis_stage::AnalysisStage;
+use crate::book_level_entry::BookLevelEntry;
+use crate::light_mbo_delta::MboDelta;
+use crate::light_mbo_entry::LightMboEntry;
 use importer::import_mbo_file;
 
 #[derive(Parser)]
@@ -38,8 +41,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         30_000_000,
         pipe![
             progress("Aggregation", 10_000_000),
-            track_prev(),
-            latency("Aggregation", 10_000_000, 1000, AggregationStage::default())
+            delta(
+                |entry: &LightMboEntry| entry.order_id, // group by order_id
+                |curr, prev| {
+                    if let Some(prev) = prev {
+                        return Some(MboDelta {
+                            ts: curr.ts,
+                            price: curr.price,
+                            side: curr.side as u64,
+                            delta: curr.size as i32 - prev.size as i32,
+                            instrument_id: curr.instrument_id,
+                        });
+                    }
+                    None
+                }
+            ),
+            stateful::<(u64, u32), MboDelta, BookLevelEntry>(
+                |entry| (entry.side, entry.instrument_id),
+                |entry| BookLevelEntry::init(entry),
+                |level, entry| BookLevelEntry::update(level, entry)
+            )
         ],
     );
 
