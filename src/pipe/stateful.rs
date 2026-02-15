@@ -56,6 +56,7 @@ where
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn stateful<K, In, Out>(
     key_fn: impl FnMut(&In) -> K + Send,
     init_fn: impl FnMut(&In) -> Out + Send,

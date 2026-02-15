@@ -51,6 +51,7 @@ where
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn delta<K, T, Out>(
     key_fn: impl FnMut(&T) -> K + Send,
     logic: impl FnMut(&T, Option<T>) -> Option<Out> + Send,

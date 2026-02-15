@@ -7,7 +7,6 @@ mod map;
 mod progress;
 mod stateful;
 mod track;
-mod windowed;
 
 pub use dedup_by::dedup_by;
 pub use delta::delta;
@@ -18,4 +17,3 @@ pub use map::map;
 pub use progress::progress;
 pub use stateful::stateful;
 pub use track::{Tracked, track_prev, track_prev_by_hashmap};
-pub use windowed::windowed;

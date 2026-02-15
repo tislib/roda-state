@@ -36,7 +36,7 @@ impl<T: Pod + Send> Stage<T, T> for Progress<T> {
         C: OutputCollector<T>,
     {
         self.count += 1;
-        if self.count % self.interval == 0 {
+        if self.count.is_multiple_of(self.interval) {
             let now = Instant::now();
             let elapsed = now.duration_since(self.last_instant);
             let total_elapsed = now.duration_since(self.start_instant);

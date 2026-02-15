@@ -32,7 +32,7 @@ impl<T: Pod> StageOutput<T> for T {
     }
 }
 
-impl<'a, T: Pod> StageOutput<T> for &'a T {
+impl<T: Pod> StageOutput<T> for &T {
     #[inline(always)]
     fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
         collector.push(self);
@@ -48,7 +48,7 @@ impl<T: Pod> StageOutput<T> for Option<T> {
     }
 }
 
-impl<'a, T: Pod> StageOutput<T> for Option<&'a T> {
+impl<T: Pod> StageOutput<T> for Option<&T> {
     #[inline(always)]
     fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
         if let Some(r) = self {

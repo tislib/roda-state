@@ -29,7 +29,6 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
 
     /// Adds a new stage to the pipeline with a specific capacity for the output store.
     pub fn add_stage_with_capacity<
-        's,
         NextOut: Pod + Send + 'static,
         S: Stage<Out, NextOut> + Send + 'static,
     >(

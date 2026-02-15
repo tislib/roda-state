@@ -105,6 +105,7 @@ fn bench_sensor_pipeline(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("sensor_pipeline");
     group.sample_size(10);
+    group.throughput(criterion::Throughput::Elements(num_readings as u64));
     group.measurement_time(Duration::from_secs(10));
 
     group.bench_function("stage_engine", |b| {

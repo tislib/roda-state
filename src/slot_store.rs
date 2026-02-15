@@ -71,7 +71,6 @@ impl<State: Pod + Send> Settable<State> for SlotStore<State> {
 impl<State: Pod + Send> SlotStoreReader<State> {
     /// Performs a consistent snapshot read with retry logic
     pub fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
-        // Using 100 retries to ensure we get a consistent L5 snapshot
         self.storage
             .read_snapshot_with_retry(at, 100)
             .map(|state| handler(&state))
