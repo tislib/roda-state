@@ -45,7 +45,7 @@ impl<T: Pod + Send> Stage<T, T> for Progress<T> {
             let total_mps = self.count as f64 / total_elapsed.as_secs_f64();
 
             info!(
-                "[{}] Processed {} messages, Rate: {} msg/s, Avg: {} msg/s",
+                "[{}] Processed {} msgs, Rate: {}/s, Avg: {}/s",
                 self.name,
                 format_count(self.count as f64),
                 format_count(mps),

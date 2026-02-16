@@ -13,9 +13,13 @@ pub struct StageEngine<In: Pod + Send + 'static, Out: Pod + Send + 'static> {
     output_reader: StoreJournalReader<Out>,
     stage_count: usize,
     default_capacity: usize,
+    pin_cores: bool,
 }
 
 impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
+    pub fn set_pin_cores(&mut self, enabled: bool) {
+        self.pin_cores = enabled;
+    }
     /// Adds a new stage to the pipeline.
     /// This method consumes the current engine and returns a new one with the updated output type.
     /// A new thread is spawned to run the provided stage.
@@ -37,6 +41,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         mut stage: S,
     ) -> StageEngine<In, NextOut> {
         let stage_idx = self.stage_count;
+        let pin_cores = self.pin_cores;
         self.stage_count += 1;
 
         // Use a leaked string for the store name as JournalStoreOptions requires &'static str.
@@ -56,6 +61,13 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
+            if pin_cores {
+                if let Some(core_ids) = core_affinity::get_core_ids() {
+                    if let Some(core_id) = core_ids.get(stage_idx % core_ids.len()) {
+                        core_affinity::set_for_current(*core_id);
+                    }
+                }
+            }
             let mut did_work = false;
             while reader.next() {
                 did_work = true;
@@ -64,6 +76,10 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
                 });
             }
             if !did_work {
+                // Hybrid spin-wait: spin a bit before yielding to the OS
+                for _ in 0..10_000 {
+                    std::hint::spin_loop();
+                }
                 thread::yield_now();
             }
         });
@@ -74,6 +90,7 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
             output_reader: next_reader,
             stage_count: self.stage_count,
             default_capacity: self.default_capacity,
+            pin_cores: self.pin_cores,
         }
     }
 
@@ -155,6 +172,7 @@ impl<T: Pod + Send + 'static> StageEngine<T, T> {
             output_reader,
             stage_count: 0,
             default_capacity: capacity,
+            pin_cores: false,
         }
     }
 }

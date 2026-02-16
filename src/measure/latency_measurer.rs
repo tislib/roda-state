@@ -61,11 +61,10 @@ impl LatencyMeasurer {
     }
 
     fn measure_local(&mut self, duration: Duration) {
-        let count = self.sample_rate;
         let nanos = duration.as_nanos() as u64;
         let nanos = nanos.clamp(1, 1_000_000_000_000);
 
-        self.histogram.record_n(nanos, count).unwrap();
+        self.histogram.record(nanos).unwrap();
         self.sum += nanos;
     }
 
