@@ -63,6 +63,7 @@ impl JournalMmap {
     /// 1. Read (Immutable)
     ///
     /// Casts bytes at offset to a reference of T.
+    /// #[inline(always)]
     pub(crate) fn read<T: Pod>(&self, offset: usize) -> &T {
         let end = offset + size_of::<T>();
         assert!(
@@ -72,6 +73,7 @@ impl JournalMmap {
         bytemuck::from_bytes(&self.slice()[offset..end])
     }
 
+    #[inline(always)]
     pub(crate) fn read_window<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
         let end = offset + size_of::<T>() * N;
         assert!(
@@ -83,6 +85,19 @@ impl JournalMmap {
         bytemuck::cast_slice(bytes)
     }
 
+    #[inline(always)]
+    pub(crate) fn read_window2<T: Pod>(&self, offset: usize, count: usize) -> &[T] {
+        let end = offset + size_of::<T>() * count;
+        assert!(
+            end <= self.len,
+            "Read crosses buffer boundary - alignment issue?"
+        );
+        let bytes = &self.slice()[offset..end];
+
+        bytemuck::cast_slice(bytes)
+    }
+
+    #[inline(always)]
     pub(crate) fn append<T: Pod>(&mut self, state: &T) {
         let current_pos = self.write_index.load(std::sync::atomic::Ordering::Relaxed);
         let size = size_of::<T>();
@@ -103,23 +118,28 @@ impl JournalMmap {
             .store(end, std::sync::atomic::Ordering::Release);
     }
 
+    #[inline(always)]
     fn slice(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
     }
 
+    #[inline(always)]
     fn slice_mut(&mut self) -> &mut [u8] {
         assert!(!self.read_only, "Cannot mutate read-only buffer");
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
     }
 
+    #[inline(always)]
     pub(crate) fn get_write_index(&self) -> usize {
         self.write_index.load(std::sync::atomic::Ordering::Acquire)
     }
 
+    #[inline(always)]
     pub(crate) fn len(&self) -> usize {
         self.len
     }
 
+    #[inline(always)]
     pub(crate) fn reader(&self) -> JournalMmap {
         JournalMmap {
             _mmap: self._mmap.clone(),

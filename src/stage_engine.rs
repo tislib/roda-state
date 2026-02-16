@@ -59,13 +59,9 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
-            let mut did_work = false;
-            if reader.next() {
-                reader.with(|data| {
-                    stage.process(data, &mut |out: &NextOut| next_store.append(out));
-                    did_work = true;
-                });
-            }
+            let did_work = reader.handle_remaining(|data| {
+                stage.process(data, &mut |out: &NextOut| next_store.append(out));
+            }) > 0;
 
             return did_work;
         });

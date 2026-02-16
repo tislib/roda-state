@@ -85,8 +85,19 @@ impl RodaEngine {
                 }
                 info!("[Latency/Worker:{}]{}", worker_id, measurer.format_stats());
             } else {
+                let mut step_without_work_count = 0;
                 while running.load(std::sync::atomic::Ordering::Relaxed) {
-                    runnable();
+                    let did_work = runnable();
+                    if did_work {
+                        step_without_work_count = 0;
+                    } else {
+                        step_without_work_count += 1;
+                    }
+                    if step_without_work_count > 10 {
+                        spin_loop();
+                    } else if step_without_work_count > 1000 {
+                        thread::yield_now();
+                    }
                 }
             }
         });

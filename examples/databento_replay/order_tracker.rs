@@ -9,6 +9,8 @@ pub struct OrderTracker {
 }
 
 impl Stage<LightMboEntry, MboDelta> for OrderTracker {
+
+    #[inline(always)]
     fn process<C>(&mut self, entry: &LightMboEntry, collector: &mut C)
     where
         C: OutputCollector<MboDelta>,

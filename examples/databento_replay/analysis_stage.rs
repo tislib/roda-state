@@ -21,7 +21,7 @@ impl Default for AnalysisStage {
             book_tops: FxHashMap::default(),
             last_print: Instant::now(),
             counter: 0,
-            tts_measurer: LatencyMeasurer::new(1000), // Sample every 1000th tick
+            tts_measurer: LatencyMeasurer::new(1), // Sample every 1000th tick
         }
     }
 }
@@ -66,11 +66,6 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
         let (imbalance, bid_vol, ask_vol) = Self::calculate_weighted_imbalance(book_top);
 
         if bid_vol + ask_vol > 0.0 {
-            // Record tick-to-signal latency
-            let now_nanos = crate::latency_tracker::get_relative_nanos();
-            let tts_latency = now_nanos.saturating_sub(entry.ts_recv);
-            self.tts_measurer.measure(Duration::from_nanos(tts_latency));
-
             // Produce the signal
             collector.push(&ImbalanceSignal {
                 ts: entry.ts,
@@ -84,11 +79,18 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
 
             if imbalance.abs() > 0.98 && self.last_print.elapsed() > Duration::from_millis(500) {
                 info!(
-                    "[Sym:{}] High Imbalance: {:.4} (B:{:.0} A:{:.0}) | TTS: {}ns",
-                    entry.symbol, imbalance, bid_vol, ask_vol, tts_latency
+                    "[Sym:{}] High Imbalance: {:.4} (B:{:.0} A:{:.0})",
+                    entry.symbol, imbalance, bid_vol, ask_vol
                 );
                 self.last_print = Instant::now();
             }
+        }
+
+        // Record tick-to-signal latency
+        if self.counter % 1000 == 0 {
+            let now_nanos = crate::latency_tracker::get_relative_nanos();
+            let tts_latency = now_nanos.saturating_sub(entry.ts_recv);
+            self.tts_measurer.measure(Duration::from_nanos(tts_latency));
         }
     }
 }

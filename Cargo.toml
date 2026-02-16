@@ -8,7 +8,6 @@ authors = ["Your Name"]
 [dependencies]
 bytemuck = { version = "1.25.0", features = ["derive"] }
 memmap2 = "0.9.9"
-crossbeam-skiplist = "0.1"
 clap = { version = "4.5.57", features = ["derive"] }
 hdrhistogram = "7.5"
 spdlog-rs = "0.5.2"

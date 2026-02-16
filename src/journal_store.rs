@@ -86,6 +86,7 @@ impl<State: Pod + Send> Appendable<State> for JournalStore<State> {
 }
 
 impl<State: Pod + Send> StoreJournalReader<State> {
+    #[inline(always)]
     pub fn next(&self) -> bool {
         let index_to_read = self.next_index.get();
         let offset = index_to_read * size_of::<State>();
@@ -101,10 +102,12 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         true
     }
 
+    #[inline(always)]
     pub fn get_index(&self) -> usize {
         self.next_index.get()
     }
 
+    #[inline(always)]
     pub fn with<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
         let next_index = self.next_index.get();
         if next_index == 0 {
@@ -115,6 +118,33 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         Some(handler(self.storage.read(offset)))
     }
 
+    #[inline(always)]
+    pub fn handle_remaining(&self, mut handler: impl FnMut(&State)) -> usize {
+        let index_to_read = self.next_index.get();
+        let offset = index_to_read * size_of::<State>();
+        let write_index = self.storage.get_write_index();
+
+        // If there is no new data, exit immediately (Hot path)
+        if offset + size_of::<State>() > write_index {
+            return 0;
+        }
+
+        let processed_items = (write_index - offset) / size_of::<State>();
+
+        let window = self.storage.read_window2::<State>(offset, processed_items);
+
+        for item in window {
+            handler(item);
+        }
+
+        // 3. Commit state exactly once at the end
+        self.next_index.set(index_to_read + processed_items);
+        self.op_count.fetch_add(processed_items as u64, Relaxed);
+
+        processed_items
+    }
+
+    #[inline(always)]
     pub fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
         let offset = at * size_of::<State>();
         let write_index = self.storage.get_write_index();
@@ -124,6 +154,7 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         Some(handler(self.storage.read(offset)))
     }
 
+    #[inline(always)]
     pub fn with_last<R>(&self, handler: impl FnOnce(&State) -> R) -> Option<R> {
         let write_index = self.storage.get_write_index();
         if write_index < size_of::<State>() {
@@ -133,18 +164,22 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         Some(handler(self.storage.read(offset)))
     }
 
+    #[inline(always)]
     pub fn get(&self) -> Option<State> {
         self.with(|s| *s)
     }
 
+    #[inline(always)]
     pub fn get_at(&self, at: usize) -> Option<State> {
         self.with_at(at, |s| *s)
     }
 
+    #[inline(always)]
     pub fn get_last(&self) -> Option<State> {
         self.with_last(|s| *s)
     }
 
+    #[inline(always)]
     pub fn get_window<const N: usize>(&self, at: usize) -> Option<&[State]> {
         let offset = at * size_of::<State>();
         let write_index = self.storage.get_write_index();
@@ -155,6 +190,7 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         Some(self.storage.read_window::<State, N>(offset))
     }
 
+    #[inline(always)]
     pub fn size(&self) -> usize {
         self.storage.get_write_index() / size_of::<State>()
     }

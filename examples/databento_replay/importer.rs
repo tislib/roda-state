@@ -65,10 +65,10 @@ pub fn import_mbo_file(
             market_store.append(&LightMboEntry::from_msg(msg, ts_recv));
             count += 1;
 
-            if start.elapsed().as_secs() > 20 {
-                info!("[Writer] Stopped after 20 seconds...");
-                break;
-            }
+            // if count % 100_000 == 0 && start.elapsed().as_secs() > 20 {
+            //     info!("[Writer] Stopped after 20 seconds...");
+            //     break;
+            // }
         }
     }
 

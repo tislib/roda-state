@@ -9,6 +9,7 @@ pub struct AggregationStage {
 }
 
 impl Stage<MboDelta, BookLevelEntry> for AggregationStage {
+    #[inline(always)]
     fn process<C>(&mut self, delta: &MboDelta, collector: &mut C)
     where
         C: OutputCollector<BookLevelEntry>,
