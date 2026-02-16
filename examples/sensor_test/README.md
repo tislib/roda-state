@@ -41,9 +41,9 @@ graph LR
 cargo run --release --example sensor_test
 ```
 
-## Performance
+## Performance (tested on MacBook M2 Max)
 
 On a modern CPU, this example typically achieves:
-- **Throughput**: > 5 MEPS (Million Events Per Second).
+- **Throughput**: ~50 MEPS (Million Events Per Second).
 - **End-to-End Latency**: < 500ns (median) for alert generation.
 - **Stage Latency**: ~50ns per record for aggregation logic.

@@ -108,9 +108,6 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         self.output_reader.size()
     }
 
-    pub fn enable_latency_stats(&mut self, enabled: bool) {
-        self.engine.enable_latency_stats(enabled);
-    }
 
     /// Waits for all workers to finish processing.
     pub fn await_idle(&self, timeout: Duration) {

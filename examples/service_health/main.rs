@@ -3,26 +3,27 @@ mod models;
 use models::{Alert, Reading, SensorKey, Summary};
 use roda_state::StageEngine;
 use roda_state::pipe;
-use roda_state::{dedup_by, delta, inspect, stateful};
-use std::time::Duration;
+use roda_state::{dedup_by, delta, stateful};
+use std::time::{Duration, Instant};
 
 fn main() {
     println!("--- Starting StageEngine: Service Health Pipeline ---");
+    let start_time = Instant::now();
 
     // 1. Initialize StageEngine (Initial entry type is Reading)
-    let engine = StageEngine::<Reading, Reading>::with_capacity(1000);
+    let engine = StageEngine::<Reading, Reading>::with_capacity(100_000_100);
 
     // 2. Add Aggregation Stage: Reading -> Summary
     // We also include a deduplicator at the start to drop identical raw readings.
     let engine = engine.add_stage(pipe![
         dedup_by(|r: &Reading| (r.sensor_id, (r.value * 1000.0) as u64)), // Noise filter
         stateful(SensorKey::from_reading, Summary::init, Summary::update),
-        inspect(|s: &Summary| {
-            println!(
-                "STAGE 1 [AGG]: Sensor {} Avg updated to {:.2}",
-                s.sensor_id, s.avg
-            );
-        })
+        // inspect(|s: &Summary| {
+        //     println!(
+        //         "STAGE 1 [AGG]: Sensor {} Avg updated to {:.2}",
+        //         s.sensor_id, s.avg
+        //     );
+        // })
     ]);
 
     // 3. Add Anomaly Detection Stage: Summary -> Alert
@@ -47,30 +48,35 @@ fn main() {
         ),
         // Deduplicate Alerts: Only notify if the alert is new/changed for this sensor
         dedup_by(|a: &Alert| a.sensor_id),
-        inspect(|a: &Alert| {
-            println!(
-                "STAGE 2 [ALERT]: 🚨 Anomaly detected for Sensor {}!",
-                a.sensor_id
-            );
-        })
+        // inspect(|a: &Alert| {
+        //     println!(
+        //         "STAGE 2 [ALERT]: 🚨 Anomaly detected for Sensor {}!",
+        //         a.sensor_id
+        //     );
+        // })
     ]);
 
     // 4. Ingest Data
     println!("\nIngesting readings...");
-    let readings = [
-        Reading::from(1, 10.0, 10_000),  // Baseline
-        Reading::from(1, 10.0, 20_000),  // Duplicate (filtered by dedup)
-        Reading::from(1, 11.0, 30_000),  // Small change
-        Reading::from(1, 25.0, 110_000), // Spike -> Triggers Alert
-        Reading::from(2, 5.0, 10_000),   // New Sensor
-    ];
+    // Trigger an initial alert for sensor 2
+    engine.send(&Reading::from(2, 10.0, 0));
+    engine.send(&Reading::from(2, 100.0, 1));
 
-    for r in readings {
-        engine.send(&r);
+    let count = 100_000_000;
+    for i in 0..count {
+        engine.send(&Reading::from(1, 10.0, i as u64));
     }
+    let readings_count = count + 2;
 
     // Give workers time to finish processing
     engine.await_idle(Duration::from_millis(100));
+
+    let duration = start_time.elapsed();
+    println!("Pipeline completed in {}ms", duration.as_millis());
+    println!(
+        "Throughput: {}/s",
+        readings_count as f64 / duration.as_secs_f64()
+    );
 
     // 5. Display Results from the end of the pipeline
     println!("\n--- Final Alert Journal ---");

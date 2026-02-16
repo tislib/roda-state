@@ -1,16 +1,17 @@
 mod models;
 
 use crate::models::{Alert, Reading, SensorKey, Summary};
-use roda_state::StageEngine;
 use roda_state::pipe;
+use roda_state::{OutputCollector, StageEngine};
 use roda_state::{delta, stateful};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn main() {
     println!("Starting Sensor Multistage Pipeline (Optimized)...");
+    let start_time = Instant::now();
 
     // 1. Initialize StageEngine
-    let engine = StageEngine::<Reading, Reading>::with_capacity(1000);
+    let engine = StageEngine::<Reading, Reading>::with_capacity(1000_000_000);
 
     // 2. Add Aggregation Stage: Reading -> Summary
     let mut engine = engine
@@ -41,12 +42,16 @@ fn main() {
 
     // 4. INGEST DATA
     println!("\nPushing sensor readings...");
-    let readings = [
-        Reading::from(1, 10.0, 10_000),
-        Reading::from(1, 12.0, 20_000),
-        Reading::from(1, 20.0, 110_000), // Average jump
-        Reading::from(1, 22.0, 120_000),
-    ];
+    let count = 100_000_000;
+    let mut readings = Vec::with_capacity(count * 4);
+
+    for _ in 0..100_000_000 {
+        readings.push(Reading::from(1, 10.0, 10_000));
+        readings.push(Reading::from(1, 12.0, 20_000));
+        readings.push(Reading::from(1, 20.0, 110_000)); // Average jump
+        readings.push(Reading::from(1, 22.0, 120_000));
+    }
+    let readings_count = count * 4;
 
     for r in readings {
         engine.send(&r);
@@ -54,14 +59,12 @@ fn main() {
 
     engine.await_idle(Duration::from_millis(100));
 
-    // 5. DISPLAY RESULTS
-    println!("\nAlerts Detected:");
-    while let Some(alert) = engine.receive() {
-        println!(
-            "ALERT: Sensor {} anomaly at {}",
-            alert.sensor_id, alert.timestamp
-        );
-    }
+    let duration = start_time.elapsed();
+    println!("Pipeline completed in {}ms", duration.as_millis());
+    println!(
+        "Throughput: {}/s",
+        readings_count as f64 / duration.as_secs_f64()
+    );
 
     println!("\nDone!");
 }

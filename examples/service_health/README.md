@@ -43,8 +43,8 @@ graph LR
 cargo run --release --example service_health
 ```
 
-## Performance Metrics
+## Performance Metrics (tested on MacBook M2 Max)
 
-- **Throughput**: ~4.5 MEPS (due to additional deduplication steps).
+- **Throughput**: ~26 MEPS (Million Events Per Second).
 - **Stage Execution**: ~70-100ns per record.
 - **End-to-End Latency**: Measured in nanoseconds from ingestion to alert receipt.

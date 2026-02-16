@@ -42,7 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Initialize StageEngine with enough capacity for the input
     let mut engine = StageEngine::with_capacity(30_000_000);
-    // engine.enable_latency_stats(true);
     engine.set_pin_cores(args.pin_cores);
 
     if args.pin_cores {

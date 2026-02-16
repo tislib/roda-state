@@ -11,8 +11,7 @@ struct LargeState {
 }
 
 fn bench_push(c: &mut Criterion) {
-    let mut engine = RodaEngine::new();
-    engine.enable_latency_stats(true);
+    let engine = RodaEngine::new();
     let mut group = c.benchmark_group("append");
 
     // 1GB buffer to ensure we don't overflow during benchmarking
@@ -56,7 +55,6 @@ fn bench_push(c: &mut Criterion) {
 
 fn bench_fetch(c: &mut Criterion) {
     let mut engine = RodaEngine::new();
-    engine.enable_latency_stats(true);
     let mut group = c.benchmark_group("fetch");
 
     let size = 1024 * 1024 * 100; // 100MB
@@ -126,7 +124,6 @@ fn bench_fetch(c: &mut Criterion) {
 
 fn bench_window(c: &mut Criterion) {
     let mut engine = RodaEngine::new();
-    engine.enable_latency_stats(true);
     let mut group = c.benchmark_group("window");
 
     let size = 1024 * 1024 * 100; // 100MB
