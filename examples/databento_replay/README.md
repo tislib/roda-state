@@ -55,3 +55,14 @@ The engine reports:
 - **MEPS**: Millions of Events Per Second processed.
 - **P99.9 Latency**: Tail latency for both stage execution and end-to-end signal generation.
 - **Throughput Stats**: Periodic logs showing the processing rate and average speed.
+
+### Benchmark Results
+
+On a typical performance-tuned environment (`--pin-cores`), the system achieves:
+
+```text
+Final Imbalance Signals: 24,191,906
+Throughput: 7.40 MEPS (Million Events Per Second)
+Execution Time: 3.27s
+TTS Latency (Tick-to-Signal): p50=8.0us, p90=28.7us, p99=56.7us, p999=165.4us
+```
