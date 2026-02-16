@@ -4,6 +4,7 @@ use crate::op_counter::OpCounter;
 use crate::slot_store::{SlotStore, SlotStoreOptions};
 use bytemuck::Pod;
 use spdlog::info;
+use std::hint::spin_loop;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::thread;
@@ -16,6 +17,7 @@ pub struct RodaEngine {
     enable_latency_stats: bool,
     worker_handlers: Vec<thread::JoinHandle<()>>,
     op_counter: Arc<OpCounter>,
+    pin_cores: bool,
 }
 
 impl RodaEngine {
@@ -26,7 +28,12 @@ impl RodaEngine {
             enable_latency_stats: false,
             worker_handlers: vec![],
             op_counter: OpCounter::new(),
+            pin_cores: false,
         }
+    }
+
+    pub(crate) fn set_pin_cores(&mut self, pin_cores: bool) {
+        self.pin_cores = pin_cores;
     }
 
     pub fn new_with_root_path(root_path: &'static str) -> Self {
@@ -36,6 +43,7 @@ impl RodaEngine {
             enable_latency_stats: false,
             worker_handlers: vec![],
             op_counter: OpCounter::new(),
+            pin_cores: false,
         }
     }
 
@@ -43,16 +51,36 @@ impl RodaEngine {
         self.enable_latency_stats = enable;
     }
 
-    pub fn run_worker(&mut self, mut runnable: impl FnMut() + Send + 'static) {
+    pub fn run_worker(&mut self, mut runnable: impl FnMut() -> bool + Send + 'static) {
         let worker_id = self.worker_handlers.len();
         let running = self.running.clone();
         let enable_latency_stats = self.enable_latency_stats;
+        let pin_cores = self.pin_cores;
         let handler = thread::spawn(move || {
+            if pin_cores {
+                if let Some(core_ids) = core_affinity::get_core_ids() {
+                    if let Some(core_id) = core_ids.get(worker_id % core_ids.len()) {
+                        core_affinity::set_for_current(*core_id);
+                    }
+                }
+            }
+
             if enable_latency_stats {
                 let mut measurer = LatencyMeasurer::new(1000);
+                let mut step_without_work_count = 0;
                 while running.load(std::sync::atomic::Ordering::Relaxed) {
                     let instant = Instant::now();
-                    runnable();
+                    let did_work = runnable();
+                    if did_work {
+                        step_without_work_count = 0;
+                    } else {
+                        step_without_work_count += 1;
+                    }
+                    if step_without_work_count > 10 {
+                        spin_loop();
+                    } else if step_without_work_count > 1000 {
+                        thread::yield_now();
+                    }
                     measurer.measure(instant.elapsed());
                 }
                 info!("[Latency/Worker:{}]{}", worker_id, measurer.format_stats());

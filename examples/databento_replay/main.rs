@@ -11,13 +11,14 @@ mod book_level_entry;
 mod book_level_top;
 mod imbalance_signal;
 mod importer;
+mod latency_tracker;
 mod light_mbo_delta;
 mod light_mbo_entry;
 mod order_tracker;
-mod latency_tracker;
 
 use crate::aggregation_stage::AggregationStage;
 use crate::analysis_stage::AnalysisStage;
+use crate::light_mbo_entry::LightMboEntry;
 use crate::order_tracker::OrderTracker;
 use importer::import_mbo_file;
 
@@ -49,6 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 2. Add Order Tracker Stage: LightMboEntry -> MboDelta
+    let engine = engine.add_stage_with_capacity(30_000_000, |x: &LightMboEntry| Some(*x));
     let engine = engine.add_stage_with_capacity(30_000_000, pipe![OrderTracker::default()]);
 
     // 3. Add Aggregation Stage: MboDelta -> BookLevelEntry
