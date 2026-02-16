@@ -11,4 +11,3 @@ pub struct BookLevelEntry {
     pub side: u8,    // 0=Bid, 1=Ask
     pub _pad: [u8; 7],
 }
-

@@ -2,6 +2,8 @@
 
 This example demonstrates a robust, low-latency service health monitoring system built with the **Roda Engine**. It includes noise filtering (deduplication), stateful aggregation, and anomaly detection with alert deduplication.
 
+See [main.rs](main.rs) for the complete source code.
+
 ## Key Features
 
 - **Noise Filtering**: Uses the `dedup_by` pipe component to drop redundant raw readings with identical values, reducing downstream load.

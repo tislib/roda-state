@@ -47,12 +47,11 @@ impl RodaEngine {
         let running = self.running.clone();
         let pin_cores = self.pin_cores;
         let handler = thread::spawn(move || {
-            if pin_cores {
-                if let Some(core_ids) = core_affinity::get_core_ids() {
-                    if let Some(core_id) = core_ids.get(worker_id % core_ids.len()) {
-                        core_affinity::set_for_current(*core_id);
-                    }
-                }
+            if pin_cores
+                && let Some(core_ids) = core_affinity::get_core_ids()
+                && let Some(core_id) = core_ids.get(worker_id % core_ids.len())
+            {
+                core_affinity::set_for_current(*core_id);
             }
 
             let mut step_without_work_count = 0;

@@ -2,6 +2,8 @@
 
 This example demonstrates a high-performance multistage pipeline for processing streaming sensor data using the **Roda Engine**. It showcases statistical windowing (Aggregation) and stateful delta analysis (Anomaly Detection) in a thread-per-stage architecture.
 
+The implementation is located in [main.rs](main.rs).
+
 ## Key Features
 
 - **Multistage Pipeline**: Decouples data ingestion, statistical aggregation, and anomaly detection into separate CPU-bound stages.

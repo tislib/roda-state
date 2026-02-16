@@ -34,9 +34,9 @@ impl AnalysisStage {
         let mut bid_vol = 0.0;
         let mut ask_vol = 0.0;
 
-        for i in 0..5 {
-            bid_vol += book_top.bids[i].size as f64 * WEIGHTS[i];
-            ask_vol += book_top.asks[i].size as f64 * WEIGHTS[i];
+        for (i, &weight) in WEIGHTS.iter().enumerate() {
+            bid_vol += book_top.bids[i].size as f64 * weight;
+            ask_vol += book_top.asks[i].size as f64 * weight;
         }
 
         let total_vol = bid_vol + ask_vol;
@@ -87,7 +87,7 @@ impl Stage<BookLevelEntry, ImbalanceSignal> for AnalysisStage {
         }
 
         // Record tick-to-signal latency
-        if self.counter % 1000 == 0 {
+        if self.counter.is_multiple_of(1000) {
             let now_nanos = crate::latency_tracker::get_relative_nanos();
             let tts_latency = now_nanos.saturating_sub(entry.ts_recv);
             self.tts_measurer.measure(Duration::from_nanos(tts_latency));

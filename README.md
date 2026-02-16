@@ -63,6 +63,16 @@ fn main() {
 
 ---
 
+## Examples
+
+Explore more detailed implementations in the [examples](examples) folder:
+
+- [**Service Health Monitoring**](examples/service_health/README.md): Demonstrates noise filtering, stateful aggregation, and alert suppression.
+- [**Real-Time Sensor Data**](examples/sensor_test/README.md): Showcases statistical windowing and end-to-end latency tracking.
+- [**High-Performance MBO Replay**](examples/databento_replay/README.md): A production-ready market data replay and alpha generation system with CPU pinning and zero-allocation hot paths.
+
+---
+
 ## Why Roda?
 
 - **Deterministic performance:** Explicit store sizes, preallocated buffers, back-pressure free write path.

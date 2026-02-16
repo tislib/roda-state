@@ -59,11 +59,9 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
         let next_reader = next_store.reader();
 
         self.engine.run_worker(move || {
-            let did_work = reader.handle_remaining(|data| {
+            reader.handle_remaining(|data| {
                 stage.process(data, &mut |out: &NextOut| next_store.append(out));
-            }) > 0;
-
-            return did_work;
+            }) > 0
         });
 
         StageEngine {
@@ -107,7 +105,6 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
     pub fn output_size(&self) -> usize {
         self.output_reader.size()
     }
-
 
     /// Waits for all workers to finish processing.
     pub fn await_idle(&self, timeout: Duration) {

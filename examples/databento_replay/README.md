@@ -14,7 +14,7 @@ This example demonstrates a production-ready, low-latency market data replay and
 
 ## Pipeline Architecture
 
-The system uses a multi-stage threaded pipeline where data flows through wait-free journals.
+The system uses a multi-stage threaded pipeline where data flows through wait-free journals. The full implementation can be found in [main.rs](main.rs).
 
 ```mermaid
 graph LR

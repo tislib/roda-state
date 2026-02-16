@@ -9,7 +9,6 @@ pub struct OrderTracker {
 }
 
 impl Stage<LightMboEntry, MboDelta> for OrderTracker {
-
     #[inline(always)]
     fn process<C>(&mut self, entry: &LightMboEntry, collector: &mut C)
     where
@@ -37,7 +36,7 @@ impl Stage<LightMboEntry, MboDelta> for OrderTracker {
                 // But DBN MBO usually means order is gone on 'C'. On 'F' it might stay if partial.
                 // "The 'F' message represents a fill... If the order is fully filled, it is removed from the book."
                 // In DBN, if it's a partial fill, there might be a follow up or the remaining size is what matters.
-                
+
                 // For simplicity and matching the previous 'delta' pipe logic:
                 // If it's a Cancel or full Fill, we emit a negative delta.
                 collector.push(&MboDelta {
@@ -116,7 +115,8 @@ impl Stage<LightMboEntry, MboDelta> for OrderTracker {
             }
             // Clear Book
             b'R' => {
-                self.orders.retain(|_, v| v.instrument_id != entry.instrument_id);
+                self.orders
+                    .retain(|_, v| v.instrument_id != entry.instrument_id);
                 collector.push(&MboDelta {
                     ts: entry.ts,
                     ts_recv: entry.ts_recv,

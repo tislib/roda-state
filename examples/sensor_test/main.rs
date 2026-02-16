@@ -1,8 +1,8 @@
 mod models;
 
 use crate::models::{Alert, Reading, SensorKey, Summary};
+use roda_state::StageEngine;
 use roda_state::pipe;
-use roda_state::{OutputCollector, StageEngine};
 use roda_state::{delta, stateful};
 use std::time::{Duration, Instant};
 
@@ -11,7 +11,7 @@ fn main() {
     let start_time = Instant::now();
 
     // 1. Initialize StageEngine
-    let engine = StageEngine::<Reading, Reading>::with_capacity(1000_000_000);
+    let engine = StageEngine::<Reading, Reading>::with_capacity(1_000_000_000);
 
     // 2. Add Aggregation Stage: Reading -> Summary
     let mut engine = engine
