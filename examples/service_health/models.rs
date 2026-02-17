@@ -64,7 +64,7 @@ impl Summary {
     }
 
     #[inline(always)]
-    pub fn update(&mut self, r: Reading) {
+    pub fn update(&mut self, r: &Reading) {
         if r.value < self.min {
             self.min = r.value;
         }

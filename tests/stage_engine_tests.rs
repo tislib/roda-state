@@ -5,11 +5,11 @@ use std::time::Duration;
 #[test]
 fn test_basic_pipeline() {
     let mut engine = StageEngine::<u32, u32>::new()
-        .add_stage(|x: u32| Some(x + 1))
-        .add_stage(|x: u32| Some(x * 2));
+        .add_stage(|x: &u32| Some(*x + 1))
+        .add_stage(|x: &u32| Some(*x * 2));
 
-    engine.send(10);
-    engine.send(20);
+    engine.send(&10);
+    engine.send(&20);
 
     assert_eq!(engine.receive(), Some(22)); // (10 + 1) * 2
     assert_eq!(engine.receive(), Some(42)); // (20 + 1) * 2
@@ -17,13 +17,13 @@ fn test_basic_pipeline() {
 
 #[test]
 fn test_none_filtering() {
-    let mut engine = StageEngine::<u32, u32>::new()
-        .add_stage(|x: u32| if x.is_multiple_of(2) { Some(x) } else { None });
+    let mut engine =
+        StageEngine::<u32, u32>::new().add_stage(|x: &u32| x.is_multiple_of(2).then_some(*x));
 
-    engine.send(1);
-    engine.send(2);
-    engine.send(3);
-    engine.send(4);
+    engine.send(&1);
+    engine.send(&2);
+    engine.send(&3);
+    engine.send(&4);
 
     assert_eq!(engine.receive(), Some(2));
     assert_eq!(engine.receive(), Some(4));
@@ -33,7 +33,7 @@ fn test_none_filtering() {
 fn test_multiple_outputs() {
     struct Duplicate;
     impl Stage<u32, u32> for Duplicate {
-        fn process<C>(&mut self, data: u32, collector: &mut C)
+        fn process<C>(&mut self, data: &u32, collector: &mut C)
         where
             C: OutputCollector<u32>,
         {
@@ -44,7 +44,7 @@ fn test_multiple_outputs() {
 
     let mut engine = StageEngine::<u32, u32>::new().add_stage(Duplicate);
 
-    engine.send(5);
+    engine.send(&5);
     assert_eq!(engine.receive(), Some(5));
     assert_eq!(engine.receive(), Some(5));
 }
@@ -53,10 +53,10 @@ fn test_multiple_outputs() {
 fn test_load_moderate() {
     let count = 1000;
     let mut engine =
-        StageEngine::<u32, u32>::with_capacity(count + 1).add_stage(|x: u32| Some(x + 1));
+        StageEngine::<u32, u32>::with_capacity(count + 1).add_stage(|x: &u32| Some(*x + 1));
 
     for i in 0..count {
-        engine.send(i as u32);
+        engine.send(&(i as u32));
     }
 
     for i in 0..count {
@@ -67,19 +67,19 @@ fn test_load_moderate() {
 #[test]
 fn test_concurrency_stress() {
     let mut engine = StageEngine::<u32, u32>::new()
-        .add_stage(|x: u32| {
+        .add_stage(|x: &u32| {
             // Some artificial delay to force concurrency
             thread::sleep(Duration::from_millis(1));
-            Some(x)
+            Some(*x)
         })
-        .add_stage(|x: u32| {
+        .add_stage(|x: &u32| {
             thread::sleep(Duration::from_millis(1));
-            Some(x)
+            Some(*x)
         });
 
     let count = 100;
     for i in 0..count {
-        engine.send(i);
+        engine.send(&i);
     }
 
     for i in 0..count {
@@ -90,31 +90,31 @@ fn test_concurrency_stress() {
 #[test]
 fn test_complex_pipe_macro() {
     let mut engine = StageEngine::<u32, u32>::new().add_stage(pipe![
-        |x: u32| Some(x as u64),
-        |x: u64| Some(x * 10),
-        |x: u64| Some(x + 5),
+        |x: &u32| Some(*x as u64),
+        |x: &u64| Some(*x * 10),
+        |x: &u64| Some(*x + 5),
     ]);
 
-    engine.send(1);
+    engine.send(&1);
     assert_eq!(engine.receive(), Some(15));
 }
 
 #[test]
 fn test_empty_pipeline() {
     let mut engine = StageEngine::<u32, u32>::new();
-    engine.send(42);
+    engine.send(&42);
     assert_eq!(engine.receive(), Some(42));
 }
 
 #[test]
 fn test_await_idle() {
-    let mut engine = StageEngine::<u32, u32>::new().add_stage(|x: u32| {
+    let mut engine = StageEngine::<u32, u32>::new().add_stage(|x: &u32| {
         // Very short sleep to test await_idle without being too slow
         thread::sleep(Duration::from_millis(1));
-        Some(x)
+        Some(*x)
     });
 
-    engine.send(1);
+    engine.send(&1);
     // Give it a tiny bit of time to start
     thread::sleep(Duration::from_millis(5));
     engine.await_idle(Duration::from_millis(200));
@@ -131,7 +131,8 @@ fn test_large_pod_struct() {
         id: u64,
     }
 
-    let mut engine = StageEngine::<Large, Large>::new().add_stage(|mut l: Large| {
+    let mut engine = StageEngine::<Large, Large>::new().add_stage(|l: &Large| {
+        let mut l = *l;
         l.id += 1;
         Some(l)
     });
@@ -140,7 +141,7 @@ fn test_large_pod_struct() {
         data: [1.0; 16],
         id: 100,
     };
-    engine.send(input);
+    engine.send(&input);
 
     let expected = Large {
         data: [1.0; 16],
@@ -152,11 +153,11 @@ fn test_large_pod_struct() {
 #[test]
 fn test_nested_pipes() {
     let mut engine = StageEngine::<u32, u32>::new().add_stage(pipe![
-        |x: u32| Some(x + 1),
-        pipe![|x: u32| Some(x * 2), |x: u32| Some(x + 1),]
+        |x: &u32| Some(*x + 1),
+        pipe![|x: &u32| Some(*x * 2), |x: &u32| Some(*x + 1),]
     ]);
 
-    engine.send(10);
+    engine.send(&10);
     // (10 + 1) * 2 + 1 = 23
     assert_eq!(engine.receive(), Some(23));
 }
@@ -168,11 +169,11 @@ fn test_multi_stage_load() {
 
     let mut engine = StageEngine::<u32, u32>::new();
     for _ in 0..stages {
-        engine = engine.add_stage(|x: u32| Some(x + 1));
+        engine = engine.add_stage(|x: &u32| Some(*x + 1));
     }
 
     for i in 0..items {
-        engine.send(i);
+        engine.send(&i);
     }
 
     for i in 0..items {
@@ -184,34 +185,39 @@ fn test_multi_stage_load() {
 #[should_panic(expected = "Store is full")]
 fn test_input_capacity_limit_panic() {
     let mut engine = StageEngine::<u32, u32>::with_capacity(1);
-    engine.send(1);
-    engine.send(2); // Should panic here
+    engine.send(&1);
+    engine.send(&2); // Should panic here
 }
 
 #[test]
 fn test_stage_producing_none() {
     let mut engine = StageEngine::<u32, u32>::new()
-        .add_stage(|x: u32| if x > 10 { Some(x) } else { None })
-        .add_stage(|x: u32| Some(x * 2));
+        .add_stage(|x: &u32| if *x > 10 { Some(*x) } else { None })
+        .add_stage(|x: &u32| Some(*x * 2));
 
-    engine.send(5);
-    engine.send(15);
+    engine.send(&5);
+    engine.send(&15);
 
-    engine.await_idle(Duration::from_millis(100));
-    assert_eq!(engine.output_size(), 1);
+    // Give workers a chance to pick up items
+    thread::sleep(Duration::from_millis(5));
+    engine.await_idle(Duration::from_millis(200));
+
+    // receive() will wait for the item if it hasn't arrived yet
     assert_eq!(engine.receive(), Some(30));
+    // Once received, we know the processing is done
+    assert_eq!(engine.output_size(), 1);
 }
 
 #[test]
 fn test_worker_panic_on_drop() {
     // This test ensures that if a worker panics, the engine will panic on drop.
     let result = std::panic::catch_unwind(|| {
-        let mut engine = StageEngine::<u32, u32>::new().add_stage(|_| {
+        let mut engine = StageEngine::<u32, u32>::new().add_stage(|_: &u32| {
             panic!("Stage panic");
             #[allow(unreachable_code)]
             Some(0u32)
         });
-        engine.send(1);
+        engine.send(&1);
         // Wait for worker to panic
         thread::sleep(Duration::from_millis(50));
         // engine is dropped here
@@ -226,11 +232,11 @@ fn test_long_pipeline_heavy_load() {
 
     let mut engine = StageEngine::<u32, u32>::with_capacity(items + 1);
     for _ in 0..stages {
-        engine = engine.add_stage(|x: u32| Some(x + 1));
+        engine = engine.add_stage(|x: &u32| Some(*x + 1));
     }
 
     for i in 0..items {
-        engine.send(i as u32);
+        engine.send(&(i as u32));
     }
 
     for i in 0..items {

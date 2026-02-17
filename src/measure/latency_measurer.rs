@@ -1,16 +1,26 @@
 use hdrhistogram::Histogram;
 use std::time::{Duration, Instant};
 
+/// Statistics for latency measurements.
 #[derive(Debug, Clone, Default)]
 pub struct LatencyStats {
+    /// Total number of samples.
     pub count: u64,
+    /// Minimum latency in nanoseconds.
     pub min: u64,
+    /// Maximum latency in nanoseconds.
     pub max: u64,
+    /// Mean latency in nanoseconds.
     pub mean: f64,
+    /// 50th percentile (median) latency in nanoseconds.
     pub p50: u64,
+    /// 90th percentile latency in nanoseconds.
     pub p90: u64,
+    /// 99th percentile latency in nanoseconds.
     pub p99: u64,
+    /// 99.9th percentile latency in nanoseconds.
     pub p999: u64,
+    /// 99.99th percentile latency in nanoseconds.
     pub p9999: u64,
 }
 
@@ -27,7 +37,9 @@ impl Drop for LatencyMeasurerGuard<'_> {
     }
 }
 
-/// A latency measurer that uses hdrhistogram.
+/// A high-precision latency measurer using HdrHistogram.
+///
+/// It supports sampling to minimize overhead in high-throughput systems.
 pub struct LatencyMeasurer {
     histogram: Histogram<u64>,
     sum: u64,
@@ -61,11 +73,10 @@ impl LatencyMeasurer {
     }
 
     fn measure_local(&mut self, duration: Duration) {
-        let count = self.sample_rate;
         let nanos = duration.as_nanos() as u64;
         let nanos = nanos.clamp(1, 1_000_000_000_000);
 
-        self.histogram.record_n(nanos, count).unwrap();
+        self.histogram.record(nanos).unwrap();
         self.sum += nanos;
     }
 
@@ -138,42 +149,13 @@ impl LatencyMeasurer {
 
     fn format_duration(nanos: f64) -> String {
         if nanos < 1000.0 {
-            if nanos == nanos.floor() {
-                format!("{:.0}ns", nanos)
-            } else {
-                format!("{:.1}ns", nanos)
-            }
+            format!("{:.1}ns", nanos)
         } else if nanos < 1_000_000.0 {
-            let val = nanos / 1000.0;
-            if val == val.floor() {
-                format!("{:.0}us", val)
-            } else {
-                format!("{:.1}us", val)
-            }
+            format!("{:.1}us", nanos / 1000.0)
         } else if nanos < 1_000_000_000.0 {
-            let val = nanos / 1_000_000.0;
-            if val == val.floor() {
-                format!("{:.0}ms", val)
-            } else {
-                let s = format!("{:.2}ms", val);
-                if s.ends_with("0ms") {
-                    format!("{:.1}ms", val)
-                } else {
-                    s
-                }
-            }
+            format!("{:.1}ms", nanos / 1_000_000.0)
         } else {
-            let val = nanos / 1_000_000_000.0;
-            if val == val.floor() {
-                format!("{:.0}s", val)
-            } else {
-                let s = format!("{:.2}s", val);
-                if s.ends_with("0s") {
-                    format!("{:.1}s", val)
-                } else {
-                    s
-                }
-            }
+            format!("{:.2}s", nanos / 1_000_000_000.0)
         }
     }
 

@@ -1,25 +1,83 @@
+use crate::stage::{OutputCollector, Stage};
+use bytemuck::Pod;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
-/// Manages a per-key state for aggregations.
-pub fn stateful<K, In, Out>(
-    mut key_fn: impl FnMut(&In) -> K,
-    mut init_fn: impl FnMut(&In) -> Out,
-    mut fold_fn: impl FnMut(&mut Out, In),
-) -> impl FnMut(In) -> Option<Out>
+/// Maintains per-key state for stateful aggregations or processing.
+///
+/// It uses a `HashMap` to store state for each key and applies a folding function
+/// to update the state with each incoming item.
+pub struct Stateful<K, In, Out, KF, IF, FF> {
+    key_fn: KF,
+    init_fn: IF,
+    fold_fn: FF,
+    storage: HashMap<K, Out>,
+    _phantom: PhantomData<In>,
+}
+
+impl<K, In, Out, KF, IF, FF> Stateful<K, In, Out, KF, IF, FF>
 where
     K: std::hash::Hash + Eq,
-    In: bytemuck::Pod + Send,
-    Out: bytemuck::Pod + Send + Copy,
+    In: Pod,
+    Out: Pod,
+    KF: FnMut(&In) -> K,
+    IF: FnMut(&In) -> Out,
+    FF: FnMut(&mut Out, &In),
 {
-    let mut storage: HashMap<K, Out> = HashMap::new();
-    move |item| {
-        let key = key_fn(&item);
-        let entry = storage
-            .entry(key)
-            .and_modify(|state| fold_fn(state, item))
-            .or_insert_with(|| init_fn(&item));
-        Some(*entry)
+    pub fn new(key_fn: KF, init_fn: IF, fold_fn: FF) -> Self {
+        Self {
+            key_fn,
+            init_fn,
+            fold_fn,
+            storage: HashMap::new(),
+            _phantom: PhantomData,
+        }
     }
+}
+
+impl<K, In, Out, KF, IF, FF> Stage<In, Out> for Stateful<K, In, Out, KF, IF, FF>
+where
+    K: std::hash::Hash + Eq + Send,
+    In: Pod + Send,
+    Out: Pod + Send,
+    KF: FnMut(&In) -> K + Send,
+    IF: FnMut(&In) -> Out + Send,
+    FF: FnMut(&mut Out, &In) + Send,
+{
+    #[inline(always)]
+    fn process<C>(&mut self, item: &In, collector: &mut C)
+    where
+        C: OutputCollector<Out>,
+    {
+        let key = (self.key_fn)(item);
+        let entry = self
+            .storage
+            .entry(key)
+            .and_modify(|state| (self.fold_fn)(state, item))
+            .or_insert_with(|| (self.init_fn)(item));
+        collector.push(entry);
+    }
+}
+
+#[allow(clippy::type_complexity)]
+pub fn stateful<K, In, Out>(
+    key_fn: impl FnMut(&In) -> K + Send,
+    init_fn: impl FnMut(&In) -> Out + Send,
+    fold_fn: impl FnMut(&mut Out, &In) + Send,
+) -> Stateful<
+    K,
+    In,
+    Out,
+    impl FnMut(&In) -> K + Send,
+    impl FnMut(&In) -> Out + Send,
+    impl FnMut(&mut Out, &In) + Send,
+>
+where
+    K: std::hash::Hash + Eq,
+    In: Pod,
+    Out: Pod,
+{
+    Stateful::new(key_fn, init_fn, fold_fn)
 }
 
 #[repr(C)]
@@ -35,19 +93,21 @@ mod stateful_tests {
 
     #[test]
     fn test_stateful_logic() {
-        // Now using our Pod-compliant struct instead of a tuple
         let mut pipe = stateful(
-            |item: &Message| item.id,           // Key: ID
-            |item| item.value,                  // Init: First value
-            |state, item| *state += item.value, // Fold: Add new value
+            |item: &Message| item.id,
+            |item| item.value,
+            |state, item| *state += item.value,
         );
+        let mut out = Vec::new();
 
         let m1 = Message { id: 1, value: 10 };
         let m2 = Message { id: 2, value: 5 };
         let m3 = Message { id: 1, value: 20 };
 
-        assert_eq!(pipe(m1), Some(10));
-        assert_eq!(pipe(m2), Some(5));
-        assert_eq!(pipe(m3), Some(30));
+        pipe.process(&m1, &mut |x: &i64| out.push(*x));
+        pipe.process(&m2, &mut |x: &i64| out.push(*x));
+        pipe.process(&m3, &mut |x: &i64| out.push(*x));
+
+        assert_eq!(out, vec![10, 5, 30]);
     }
 }

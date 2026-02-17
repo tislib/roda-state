@@ -16,7 +16,7 @@ fn test_reader_next_and_with_logic() {
     assert!(reader.with(|&x| x).is_none());
 
     // Push one value
-    store.append(100);
+    store.append(&100);
 
     // next() should now be true
     assert!(reader.next());
@@ -29,7 +29,7 @@ fn test_reader_next_and_with_logic() {
     assert_eq!(reader.with(|&x| x), Some(100));
 
     // Push another value
-    store.append(200);
+    store.append(&200);
 
     // next() should be true
     assert!(reader.next());
@@ -47,9 +47,9 @@ fn test_reader_get_at_and_last() {
     });
     let reader = store.reader();
 
-    store.append(10);
-    store.append(20);
-    store.append(30);
+    store.append(&10);
+    store.append(&20);
+    store.append(&30);
 
     assert_eq!(reader.get_at(0), Some(10));
     assert_eq!(reader.get_at(1), Some(20));

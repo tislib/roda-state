@@ -1,25 +1,61 @@
+use crate::stage::{OutputCollector, Stage};
+use bytemuck::Pod;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 /// Only emits the event if the value associated with the key has changed.
-pub fn dedup_by<K, T>(mut key_fn: impl FnMut(&T) -> K) -> impl FnMut(T) -> Option<T>
+pub struct DedupBy<K, T, F> {
+    key_fn: F,
+    last_values: HashMap<K, T>,
+    _phantom: PhantomData<T>,
+}
+
+impl<K, T, F> DedupBy<K, T, F>
 where
     K: std::hash::Hash + Eq,
-    T: bytemuck::Pod + Send + Copy + PartialEq,
+    T: Pod + PartialEq,
+    F: FnMut(&T) -> K,
 {
-    let mut last_values: HashMap<K, T> = HashMap::new();
-    move |curr| {
-        let key = key_fn(&curr);
-        let prev = last_values.get(&key);
+    pub fn new(key_fn: F) -> Self {
+        Self {
+            key_fn,
+            last_values: HashMap::new(),
+            _phantom: PhantomData,
+        }
+    }
+}
 
-        if prev == Some(&curr) {
-            // Value hasn't changed; suppress the event
-            return None;
+impl<K, T, F> Stage<T, T> for DedupBy<K, T, F>
+where
+    K: std::hash::Hash + Eq + Send,
+    T: Pod + PartialEq + Send,
+    F: FnMut(&T) -> K + Send,
+{
+    #[inline(always)]
+    fn process<C>(&mut self, curr: &T, collector: &mut C)
+    where
+        C: OutputCollector<T>,
+    {
+        let key = (self.key_fn)(curr);
+        let prev = self.last_values.get(&key);
+
+        if prev == Some(curr) {
+            return;
         }
 
-        // Value changed or is new; update cache and emit
-        last_values.insert(key, curr);
-        Some(curr)
+        self.last_values.insert(key, *curr);
+        collector.push(curr);
     }
+}
+
+pub fn dedup_by<K, T>(
+    key_fn: impl FnMut(&T) -> K + Send,
+) -> DedupBy<K, T, impl FnMut(&T) -> K + Send>
+where
+    K: std::hash::Hash + Eq,
+    T: Pod + PartialEq,
+{
+    DedupBy::new(key_fn)
 }
 
 #[cfg(test)]
@@ -28,11 +64,14 @@ mod dedup_tests {
 
     #[test]
     fn test_dedup_logic() {
-        let mut pipe = dedup_by(|_: &i32| 0); // Use a constant key for global consecutive dedup
+        let mut pipe = dedup_by(|_: &i32| 0);
+        let mut out = Vec::new();
 
-        assert_eq!(pipe(10), Some(10)); // First time: pass
-        assert_eq!(pipe(10), None); // Same value: drop
-        assert_eq!(pipe(20), Some(20)); // New value: pass
-        assert_eq!(pipe(10), Some(10)); // Changed back: pass
+        pipe.process(&10, &mut |x: &i32| out.push(*x));
+        pipe.process(&10, &mut |x: &i32| out.push(*x));
+        pipe.process(&20, &mut |x: &i32| out.push(*x));
+        pipe.process(&10, &mut |x: &i32| out.push(*x));
+
+        assert_eq!(out, vec![10, 20, 10]);
     }
 }

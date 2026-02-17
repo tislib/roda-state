@@ -2,7 +2,7 @@ use bytemuck::Pod;
 
 /// For structures where we append data to the end (Journals, Logs).
 pub trait Appendable<State: Pod> {
-    fn append(&mut self, state: State);
+    fn append(&mut self, state: &State);
 }
 
 /// For structures where we update a specific "address" or "slot" (State Maps, Arrays).

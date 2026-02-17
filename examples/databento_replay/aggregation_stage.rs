@@ -1,48 +1,62 @@
 use crate::book_level_entry::BookLevelEntry;
-use crate::light_mbo_entry::LightMboEntry;
+use crate::light_mbo_delta::MboDelta;
+use fxhash::FxHashMap;
 use roda_state::{OutputCollector, Stage};
-use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct AggregationStage {
-    book_volumes: HashMap<(u32, u8, i64), BookLevelEntry>,
+    book_volumes: FxHashMap<(u32, u8, i64), BookLevelEntry>,
 }
 
-impl Stage<LightMboEntry, BookLevelEntry> for AggregationStage {
-    fn process<C>(&mut self, entry: LightMboEntry, collector: &mut C)
+impl Stage<MboDelta, BookLevelEntry> for AggregationStage {
+    #[inline(always)]
+    fn process<C>(&mut self, delta: &MboDelta, collector: &mut C)
     where
         C: OutputCollector<BookLevelEntry>,
     {
-        let key = (entry.instrument_id, entry.side, entry.price);
+        if delta.is_clear != 0 {
+            self.book_volumes
+                .retain(|(inst_id, _, _), _| *inst_id != delta.instrument_id);
+            // Notify downstream to clear book levels for both sides
+            collector.push(&BookLevelEntry {
+                ts: delta.ts,
+                ts_recv: delta.ts_recv,
+                symbol: delta.instrument_id as u64,
+                side: b'B',
+                volume: 0,
+                ..Default::default()
+            });
+            collector.push(&BookLevelEntry {
+                ts: delta.ts,
+                ts_recv: delta.ts_recv,
+                symbol: delta.instrument_id as u64,
+                side: b'A',
+                volume: 0,
+                ..Default::default()
+            });
+            return;
+        }
+
+        let key = (delta.instrument_id, delta.side, delta.price);
         let book = self.book_volumes.entry(key).or_insert(BookLevelEntry {
-            ts: entry.ts,
-            symbol: entry.instrument_id as u64,
-            price: entry.price,
+            ts: delta.ts,
+            ts_recv: delta.ts_recv,
+            symbol: delta.instrument_id as u64,
+            price: delta.price,
             volume: 0,
-            side: entry.side,
+            side: delta.side,
             _pad: [0; 7],
         });
 
-        book.ts = entry.ts;
+        book.ts = delta.ts;
+        book.ts_recv = delta.ts_recv;
 
-        match entry.action {
-            // Add
-            b'A' => {
-                book.volume = book.volume.saturating_add(entry.size as u64);
-            }
-            // Cancel, Fill, or Trade
-            b'C' | b'F' | b'T' => {
-                book.volume = book.volume.saturating_sub(entry.size as u64);
-            }
-            // Clear Book
-            b'R' => {
-                book.volume = 0;
-            }
-            _ => {}
-        }
+        // Apply delta
+        let new_volume = (book.volume as i64 + delta.delta as i64).max(0) as u64;
+        book.volume = new_volume;
 
         // Always push the update so downstream knows about deletions/volume=0
-        collector.push(*book);
+        collector.push(book);
 
         if book.volume == 0 {
             self.book_volumes.remove(&key);

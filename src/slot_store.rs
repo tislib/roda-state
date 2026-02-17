@@ -6,19 +6,27 @@ use bytemuck::Pod;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// A random-access store for slot-based data.
+///
+/// It supports consistent reads without blocking writers using a versioning scheme.
 pub struct SlotStore<State: Pod + Send> {
     storage: SlotMmap<State>,
     pub op_counter: Arc<OpCounter>,
     num_slots: usize,
 }
 
+/// A reader for a `SlotStore` that provides snapshot reads.
 pub struct SlotStoreReader<State: Pod + Send> {
     storage: SlotMmap<State>,
 }
 
+/// Configuration options for a `SlotStore`.
 pub struct SlotStoreOptions {
+    /// The name of the store, used for the filename.
     pub name: &'static str,
+    /// The number of slots in the store.
     pub size: usize,
+    /// Whether to keep the store only in memory.
     pub in_memory: bool,
 }
 
@@ -71,7 +79,6 @@ impl<State: Pod + Send> Settable<State> for SlotStore<State> {
 impl<State: Pod + Send> SlotStoreReader<State> {
     /// Performs a consistent snapshot read with retry logic
     pub fn with_at<R>(&self, at: usize, handler: impl FnOnce(&State) -> R) -> Option<R> {
-        // Using 100 retries to ensure we get a consistent L5 snapshot
         self.storage
             .read_snapshot_with_retry(at, 100)
             .map(|state| handler(&state))

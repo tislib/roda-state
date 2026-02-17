@@ -26,7 +26,7 @@ fn test_store_reader_edge_cases() {
     // 4. get before next()
     assert_eq!(reader.get(), None);
 
-    store.append(42);
+    store.append(&42);
 
     // 5. get before next() but after push
     assert_eq!(reader.get(), None);
@@ -66,7 +66,7 @@ fn test_store_full_capacity() {
     });
 
     for i in 0..num_items {
-        store.append(i as u64);
+        store.append(&(i as u64));
     }
 
     let reader = store.reader();
@@ -93,8 +93,8 @@ fn test_store_overflow_panic() {
         in_memory: true,
     });
 
-    store.append(1);
-    store.append(2); // Should panic here
+    store.append(&1);
+    store.append(&2); // Should panic here
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn test_store_concurrent_load() {
 
     barrier.wait();
     for i in 1..=num_pushes {
-        store.append(i as u32);
+        store.append(&(i as u32));
     }
 
     let mut total_read = 0;

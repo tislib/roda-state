@@ -1,42 +1,81 @@
 use bytemuck::Pod;
 use std::marker::PhantomData;
 
+/// Represents a processing stage in the pipeline.
+///
+/// A stage takes an input of type `In` and can produce zero or more outputs of type `Out`.
 pub trait Stage<In: Pod + Send, Out: Pod + Send> {
-    fn process<C>(&mut self, data: In, collector: &mut C)
+    /// Processes a single input item.
+    fn process<C>(&mut self, data: &In, collector: &mut C)
     where
         C: OutputCollector<Out>;
 }
 
+/// A collector for output items produced by a stage.
 pub trait OutputCollector<T> {
-    fn push(&mut self, item: T);
+    /// Collects a single output item.
+    fn push(&mut self, item: &T);
 }
 
 impl<T, F> OutputCollector<T> for F
 where
-    F: FnMut(T),
+    F: FnMut(&T),
 {
     #[inline(always)]
-    fn push(&mut self, item: T) {
-        (self)(item);
+    fn push(&mut self, item: &T) {
+        self(item);
     }
 }
 
-impl<F, In, Out> Stage<In, Out> for F
+pub trait StageOutput<T> {
+    fn push_to<C: OutputCollector<T>>(self, collector: &mut C);
+}
+
+impl<T: Pod> StageOutput<T> for T {
+    #[inline(always)]
+    fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
+        collector.push(&self);
+    }
+}
+
+impl<T: Pod> StageOutput<T> for &T {
+    #[inline(always)]
+    fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
+        collector.push(self);
+    }
+}
+
+impl<T: Pod> StageOutput<T> for Option<T> {
+    #[inline(always)]
+    fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
+        if let Some(r) = self {
+            collector.push(&r);
+        }
+    }
+}
+
+impl<T: Pod> StageOutput<T> for Option<&T> {
+    #[inline(always)]
+    fn push_to<C: OutputCollector<T>>(self, collector: &mut C) {
+        if let Some(r) = self {
+            collector.push(r);
+        }
+    }
+}
+
+impl<F, In, Out, R> Stage<In, Out> for F
 where
-    F: FnMut(In) -> Option<Out>,
     In: Pod + Send,
     Out: Pod + Send,
+    F: FnMut(&In) -> R,
+    R: StageOutput<Out>,
 {
     #[inline(always)]
-    fn process<C>(&mut self, data: In, collector: &mut C)
+    fn process<C>(&mut self, data: &In, collector: &mut C)
     where
         C: OutputCollector<Out>,
     {
-        // Execute the closure and pass the result downstream
-        let out = (self)(data);
-        if let Some(out) = out {
-            collector.push(out);
-        }
+        (self)(data).push_to(collector);
     }
 }
 
@@ -44,6 +83,25 @@ pub struct Pipeline<S1, S2, In, Mid, Out> {
     s1: S1,
     s2: S2,
     _phantom: PhantomData<(In, Mid, Out)>,
+}
+
+pub struct PipelineCollector<'a, S, C, T> {
+    stage: &'a mut S,
+    collector: &'a mut C,
+    _phantom: PhantomData<T>,
+}
+
+impl<'a, S, C, In, Out> OutputCollector<In> for PipelineCollector<'a, S, C, Out>
+where
+    In: Pod + Send,
+    Out: Pod + Send,
+    S: Stage<In, Out>,
+    C: OutputCollector<Out>,
+{
+    #[inline(always)]
+    fn push(&mut self, item: &In) {
+        self.stage.process(item, self.collector);
+    }
 }
 
 impl<In, Mid, Out, S1, S2> Stage<In, Out> for Pipeline<S1, S2, In, Mid, Out>
@@ -55,17 +113,22 @@ where
     S2: Stage<Mid, Out>,
 {
     #[inline(always)]
-    fn process<C>(&mut self, data: In, collector: &mut C)
+    fn process<C>(&mut self, data: &In, collector: &mut C)
     where
         C: OutputCollector<Out>,
     {
-        self.s1.process(data, &mut |mid| {
-            self.s2.process(mid, collector);
-        });
+        let mut pc = PipelineCollector {
+            stage: &mut self.s2,
+            collector,
+            _phantom: PhantomData,
+        };
+        self.s1.process(data, &mut pc);
     }
 }
 
+/// Extension trait for composing stages into pipelines.
 pub trait StageExt<In: Pod + Send, Mid: Pod + Send>: Stage<In, Mid> {
+    /// Pipes the output of this stage into another stage.
     #[inline(always)]
     fn pipe<Out: Pod + Send, S2: Stage<Mid, Out>>(self, s2: S2) -> Pipeline<Self, S2, In, Mid, Out>
     where
@@ -94,10 +157,10 @@ mod tests {
 
     #[test]
     fn test_pipe_closures() {
-        let mut p = pipe![|x: u32| Some(x as u64), |x: u64| Some(x as u8),];
+        let mut p = pipe![|x: &u32| Some(*x as u64), |x: &u64| Some(*x as u8),];
 
         let mut out = Vec::new();
-        p.process(100u32, &mut |x: u8| out.push(x));
+        p.process(&100u32, &mut |x: &u8| out.push(*x));
         assert_eq!(out, vec![100u8]);
     }
 
@@ -105,7 +168,7 @@ mod tests {
     fn test_pipe_one_to_many() {
         struct Duplicate;
         impl Stage<u64, u64> for Duplicate {
-            fn process<C>(&mut self, data: u64, collector: &mut C)
+            fn process<C>(&mut self, data: &u64, collector: &mut C)
             where
                 C: OutputCollector<u64>,
             {
@@ -114,10 +177,12 @@ mod tests {
             }
         }
 
-        let mut p = pipe![|x: u32| Some(x as u64), Duplicate, |x: u64| Some(x as u8),];
+        let mut p = pipe![|x: &u32| Some(*x as u64), Duplicate, |x: &u64| Some(
+            *x as u8
+        ),];
 
         let mut out = Vec::new();
-        p.process(10u32, &mut |x: u8| out.push(x));
+        p.process(&10u32, &mut |x: &u8| out.push(*x));
         assert_eq!(out, vec![10u8, 10u8]);
     }
 }

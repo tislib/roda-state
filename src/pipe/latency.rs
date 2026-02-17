@@ -44,7 +44,7 @@ where
     S: Stage<In, Out>,
 {
     #[inline(always)]
-    fn process<C>(&mut self, data: In, collector: &mut C)
+    fn process<C>(&mut self, data: &In, collector: &mut C)
     where
         C: OutputCollector<Out>,
     {
@@ -81,24 +81,24 @@ mod tests {
 
     #[test]
     fn test_latency_logic() {
-        let mut pipe = latency("test", 2, 1, |x: u32| {
+        let mut pipe = latency("test", 2, 1, |x: &u32| {
             thread::sleep(Duration::from_millis(10));
-            Some(x as u64)
+            Some(*x as u64)
         });
 
         let mut out = Vec::new();
 
         // Process 1st item
         {
-            let mut collector = |x: u64| out.push(x);
-            pipe.process(1u32, &mut collector);
+            let mut collector = |x: &u64| out.push(*x);
+            pipe.process(&1u32, &mut collector);
         }
         assert_eq!(out, vec![1]);
 
         // Process 2nd item - should trigger print
         {
-            let mut collector = |x: u64| out.push(x);
-            pipe.process(2u32, &mut collector);
+            let mut collector = |x: &u64| out.push(*x);
+            pipe.process(&2u32, &mut collector);
         }
         assert_eq!(out, vec![1, 2]);
 

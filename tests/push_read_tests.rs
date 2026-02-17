@@ -11,7 +11,7 @@ fn test_push_then_read_single() {
     });
     let reader = store.reader();
 
-    store.append(42);
+    store.append(&42);
 
     let res = reader.get_window::<1>(0).unwrap();
     assert_eq!(res[0], 42);
@@ -28,7 +28,7 @@ fn test_multiple_push_read_in_order() {
     let reader = store.reader();
 
     for v in [1u32, 2, 3, 4, 5] {
-        store.append(v);
+        store.append(&v);
     }
 
     let res = reader.get_window::<5>(0).unwrap();
@@ -48,10 +48,10 @@ fn test_interleaved_push_and_read() {
     let reader = store.reader();
 
     // Push values; verify FIFO order via get_window
-    store.append(10);
-    store.append(20);
-    store.append(30);
-    store.append(40);
+    store.append(&10);
+    store.append(&20);
+    store.append(&30);
+    store.append(&40);
 
     let res = reader.get_window::<4>(0).unwrap();
     assert_eq!(res[0], 10);
@@ -77,10 +77,10 @@ fn test_stores_are_isolated_by_type() {
     let u_reader = u_store.reader();
     let i_reader = i_store.reader();
 
-    u_store.append(1);
-    i_store.append(-1);
-    u_store.append(2);
-    i_store.append(-2);
+    u_store.append(&1);
+    i_store.append(&-1);
+    u_store.append(&2);
+    i_store.append(&-2);
 
     let u_res = u_reader.get_window::<2>(0).unwrap();
     let i_res = i_reader.get_window::<2>(0).unwrap();
@@ -101,10 +101,10 @@ fn test_push_after_partial_reads() {
     });
     let reader = store.reader();
 
-    store.append(100);
-    store.append(200);
-    store.append(300);
-    store.append(400);
+    store.append(&100);
+    store.append(&200);
+    store.append(&300);
+    store.append(&400);
 
     let res = reader.get_window::<4>(0).unwrap();
     assert_eq!(res[0], 100);

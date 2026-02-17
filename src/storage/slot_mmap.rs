@@ -6,6 +6,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+/// A memory-mapped buffer for random-access, slot-based storage.
+///
+/// It uses a versioning scheme (SeqLock-like) for consistent reads without blocking the writer.
 pub struct SlotMmap<T: Pod> {
     _mmap: Arc<MmapMut>,
     ptr: *mut u8,
@@ -62,7 +65,7 @@ impl<T: Pod> SlotMmap<T> {
         })
     }
 
-    /// WRITER: Updates the specific slot by index.
+    /// WRITER: Updates the specific slot by index using versioning.
     pub fn write(&mut self, index: usize, state: &T) {
         assert!(index < self.num_slots);
         let offset = index * self.slot_size;
@@ -88,7 +91,7 @@ impl<T: Pod> SlotMmap<T> {
         }
     }
 
-    /// READER: Snapshot with spin-retry logic.
+    /// READER: Performs a consistent snapshot read with spin-retry logic.
     pub fn read_snapshot_with_retry(&self, index: usize, max_retries: usize) -> Option<T> {
         assert!(index < self.num_slots);
         let offset = index * self.slot_size;

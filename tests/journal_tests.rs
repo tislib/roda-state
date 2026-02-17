@@ -11,9 +11,9 @@ fn test_journal_panic_when_full() {
         in_memory: true,
     });
 
-    store.append(1);
-    store.append(2);
-    store.append(3); // This should panic
+    store.append(&1);
+    store.append(&2);
+    store.append(&3); // This should panic
 }
 
 #[test]
@@ -26,8 +26,8 @@ fn test_journal_no_circularity() {
     });
     let reader = store.reader();
 
-    store.append(1);
-    store.append(2);
+    store.append(&1);
+    store.append(&2);
 
     assert_eq!(reader.get_at(0), Some(1));
     assert_eq!(reader.get_at(1), Some(2));

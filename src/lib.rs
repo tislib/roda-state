@@ -1,3 +1,8 @@
+//! Roda is an ultra-high-performance, low-latency state computer for real-time analytics and event-driven systems.
+//!
+//! It enables building deterministic streaming pipelines with cache-friendly dataflows,
+//! wait-free reads, and explicit memory bounds.
+
 mod components;
 mod engine;
 mod journal_store;
