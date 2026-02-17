@@ -1,7 +1,5 @@
 # High-Performance MBO Replay & Alpha Generation
 
-This example demonstrates a production-ready, low-latency market data replay and alpha generation system built on the **Roda Engine**. It is designed to showcase the engineering standards required by top-tier HFT firms in Amsterdam (Optiver, Flow Traders, IMC).
-
 ## Key Features
 
 - **End-to-End Latency Observability**: Tracks "Tick-to-Signal" latency from the moment a record is read until the alpha signal is generated, using high-resolution `hdrhistogram`.
