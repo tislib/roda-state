@@ -1,3 +1,7 @@
+//! Reusable pipeline components for building stream processing stages.
+//!
+//! Each component implements the `Stage` trait and can be composed using `StageExt`.
+
 mod dedup_by;
 mod delta;
 mod filter;

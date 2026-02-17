@@ -5,6 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 
+/// A memory-mapped buffer optimized for sequential, append-only operations.
+///
+/// It supports wait-free reads while the writer is appending data.
 pub(crate) struct JournalMmap {
     _mmap: Arc<MmapMut>,
     ptr: *mut u8,
@@ -60,10 +63,8 @@ impl JournalMmap {
 
     // --- Bytemuck Methods ---
 
-    /// 1. Read (Immutable)
-    ///
     /// Casts bytes at offset to a reference of T.
-    /// #[inline(always)]
+    #[inline(always)]
     pub(crate) fn read<T: Pod>(&self, offset: usize) -> &T {
         let end = offset + size_of::<T>();
         assert!(
@@ -74,7 +75,7 @@ impl JournalMmap {
     }
 
     #[inline(always)]
-    pub(crate) fn read_window<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
+    pub(crate) fn read_window_const<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
         let end = offset + size_of::<T>() * N;
         assert!(
             end <= self.len,
@@ -85,8 +86,11 @@ impl JournalMmap {
         bytemuck::cast_slice(bytes)
     }
 
+    /// Returns a slice of T starting at the given offset.
+    ///
+    /// This is more efficient than calling `read` multiple times.
     #[inline(always)]
-    pub(crate) fn read_window2<T: Pod>(&self, offset: usize, count: usize) -> &[T] {
+    pub(crate) fn read_window<T: Pod>(&self, offset: usize, count: usize) -> &[T] {
         let end = offset + size_of::<T>() * count;
         assert!(
             end <= self.len,
@@ -97,6 +101,10 @@ impl JournalMmap {
         bytemuck::cast_slice(bytes)
     }
 
+    /// Appends an item to the buffer.
+    ///
+    /// # Panics
+    /// Panics if the buffer is full.
     #[inline(always)]
     pub(crate) fn append<T: Pod>(&mut self, state: &T) {
         let current_pos = self.write_index.load(std::sync::atomic::Ordering::Relaxed);
@@ -197,7 +205,7 @@ mod tests {
         journal.append(&2u32);
         journal.append(&3u32);
 
-        let window: &[u32] = journal.read_window::<u32, 3>(0);
+        let window: &[u32] = journal.read_window_const::<u32, 3>(0);
         assert_eq!(window, &[1, 2, 3]);
     }
 
@@ -222,7 +230,7 @@ mod tests {
         let mut journal = JournalMmap::new(None, 8).unwrap();
         journal.append(&1u32);
         journal.append(&2u32);
-        let _: &[u32] = journal.read_window::<u32, 3>(0); // Should panic
+        let _: &[u32] = journal.read_window_const::<u32, 3>(0); // Should panic
     }
 
     #[test]

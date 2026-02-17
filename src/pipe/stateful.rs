@@ -3,7 +3,10 @@ use bytemuck::Pod;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-/// Manages a per-key state for aggregations.
+/// Maintains per-key state for stateful aggregations or processing.
+///
+/// It uses a `HashMap` to store state for each key and applies a folding function
+/// to update the state with each incoming item.
 pub struct Stateful<K, In, Out, KF, IF, FF> {
     key_fn: KF,
     init_fn: IF,

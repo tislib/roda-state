@@ -6,19 +6,27 @@ use bytemuck::Pod;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+/// A random-access store for slot-based data.
+///
+/// It supports consistent reads without blocking writers using a versioning scheme.
 pub struct SlotStore<State: Pod + Send> {
     storage: SlotMmap<State>,
     pub op_counter: Arc<OpCounter>,
     num_slots: usize,
 }
 
+/// A reader for a `SlotStore` that provides snapshot reads.
 pub struct SlotStoreReader<State: Pod + Send> {
     storage: SlotMmap<State>,
 }
 
+/// Configuration options for a `SlotStore`.
 pub struct SlotStoreOptions {
+    /// The name of the store, used for the filename.
     pub name: &'static str,
+    /// The number of slots in the store.
     pub size: usize,
+    /// Whether to keep the store only in memory.
     pub in_memory: bool,
 }
 

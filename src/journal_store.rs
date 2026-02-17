@@ -8,18 +8,26 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
 
+/// Configuration options for a `JournalStore`.
 pub struct JournalStoreOptions {
+    /// The name of the store, used for the filename.
     pub name: &'static str,
+    /// The maximum number of items the store can hold.
     pub size: usize,
+    /// Whether to keep the store only in memory.
     pub in_memory: bool,
 }
 
+/// An append-only store for sequential data.
+///
+/// It uses memory-mapped files for persistence and high-performance I/O.
 pub struct JournalStore<State: Pod + Send> {
     storage: JournalMmap,
     op_counter: Arc<OpCounter>,
     _marker: std::marker::PhantomData<State>,
 }
 
+/// A reader for a `JournalStore` that maintains its own read index.
 pub struct StoreJournalReader<State: Pod + Send> {
     next_index: Cell<usize>,
     storage: JournalMmap,
@@ -52,6 +60,7 @@ impl<State: Pod + Send> JournalStore<State> {
         }
     }
 
+    /// Appends an item to the store.
     pub fn append(&mut self, state: &State) {
         let size = size_of::<State>();
         let current_pos = self.storage.get_write_index();
@@ -118,6 +127,9 @@ impl<State: Pod + Send> StoreJournalReader<State> {
         Some(handler(self.storage.read(offset)))
     }
 
+    /// Processes all remaining items in the store using the provided handler.
+    ///
+    /// This is highly optimized using batch reading (read_window).
     #[inline(always)]
     pub fn handle_remaining(&self, mut handler: impl FnMut(&State)) -> usize {
         let index_to_read = self.next_index.get();
@@ -131,7 +143,7 @@ impl<State: Pod + Send> StoreJournalReader<State> {
 
         let processed_items = (write_index - offset) / size_of::<State>();
 
-        let window = self.storage.read_window2::<State>(offset, processed_items);
+        let window = self.storage.read_window::<State>(offset, processed_items);
 
         for item in window {
             handler(item);
@@ -187,7 +199,7 @@ impl<State: Pod + Send> StoreJournalReader<State> {
             return None;
         }
 
-        Some(self.storage.read_window::<State, N>(offset))
+        Some(self.storage.read_window_const::<State, N>(offset))
     }
 
     #[inline(always)]

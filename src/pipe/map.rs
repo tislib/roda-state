@@ -1,4 +1,3 @@
-/// Transforms an item from one type to another.
 use crate::stage::{OutputCollector, Stage};
 use bytemuck::Pod;
 use std::marker::PhantomData;

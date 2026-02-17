@@ -16,6 +16,7 @@ pub struct StageEngine<In: Pod + Send + 'static, Out: Pod + Send + 'static> {
 }
 
 impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
+    /// Enables or disables core pinning for worker threads.
     pub fn set_pin_cores(&mut self, enabled: bool) {
         self.engine.set_pin_cores(enabled);
     }
@@ -74,13 +75,13 @@ impl<In: Pod + Send + 'static, Out: Pod + Send + 'static> StageEngine<In, Out> {
     }
 
     /// Sends data into the start of the pipeline.
-    /// Requires &mut self because JournalStore::append requires it (Single-Writer).
     pub fn send(&mut self, data: &In) {
         self.input_store.append(data);
     }
 
     /// Receives data from the end of the pipeline.
-    /// This will block/poll until data is available.
+    ///
+    /// This will block until data is available or a worker panics.
     pub fn receive(&self) -> Option<Out> {
         loop {
             if let Some(data) = self.try_receive() {

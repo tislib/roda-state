@@ -83,36 +83,7 @@ Data is transferred between stages without copying or message passing. Instead, 
 
 #### Transfer Flow
 
-```mermaid
-graph TD
-    subgraph "Shared Memory-Mapped Buffer"
-        direction LR
-        S0[Slot 0] --- S1[Slot 1] --- S2[Slot 2] --- S3[Slot 3] --- S4[Free Slot] --- S5[...]
-    end
-
-    W_IDX[Atomic Write Index]
-    R_IDX[Local Read Index]
-
-    %% Pointer lines (using lines, not arrows, as pointers)
-    W_IDX --- S4
-    R_IDX --- S1
-
-    subgraph "Stage N (Producer)"
-        P[Worker Logic]
-    end
-
-    subgraph "Stage N+1 (Consumer)"
-        C[Worker Logic]
-    end
-
-    %% Process Flow
-    P -->|1. Write Data| S4
-    P -.->|2. Atomic Store Release| W_IDX
-
-    C -.->|3. Atomic Load Acquire| W_IDX
-    C -->|4. Zero-copy Read| S1
-    C -.->|5. Increment| R_IDX
-```
+<img src="./architecture.png" alt="Architecture Image">
 
 #### Step-by-Step Mechanism:
 1.  **Stage N (Producer)** appends data to the `Free Slot` (at the current `Write Index`).

@@ -1,13 +1,19 @@
 use bytemuck::Pod;
 use std::marker::PhantomData;
 
+/// Represents a processing stage in the pipeline.
+///
+/// A stage takes an input of type `In` and can produce zero or more outputs of type `Out`.
 pub trait Stage<In: Pod + Send, Out: Pod + Send> {
+    /// Processes a single input item.
     fn process<C>(&mut self, data: &In, collector: &mut C)
     where
         C: OutputCollector<Out>;
 }
 
+/// A collector for output items produced by a stage.
 pub trait OutputCollector<T> {
+    /// Collects a single output item.
     fn push(&mut self, item: &T);
 }
 
@@ -120,7 +126,9 @@ where
     }
 }
 
+/// Extension trait for composing stages into pipelines.
 pub trait StageExt<In: Pod + Send, Mid: Pod + Send>: Stage<In, Mid> {
+    /// Pipes the output of this stage into another stage.
     #[inline(always)]
     fn pipe<Out: Pod + Send, S2: Stage<Mid, Out>>(self, s2: S2) -> Pipeline<Self, S2, In, Mid, Out>
     where

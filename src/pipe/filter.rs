@@ -2,7 +2,9 @@ use crate::stage::{OutputCollector, Stage};
 use bytemuck::Pod;
 use std::marker::PhantomData;
 
-/// Only passes items that satisfy the predicate.
+/// Filters items based on a predicate.
+///
+/// Only items for which the predicate returns `true` are passed to the next stage.
 pub struct Filter<T, F> {
     predicate: F,
     _phantom: PhantomData<T>,

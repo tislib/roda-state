@@ -9,6 +9,9 @@ use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+/// The core execution engine for Roda.
+///
+/// It manages worker threads, storage lifecycle, and shared operation counters.
 pub struct RodaEngine {
     root_path: &'static str,
     running: Arc<AtomicBool>,
@@ -18,6 +21,7 @@ pub struct RodaEngine {
 }
 
 impl RodaEngine {
+    /// Creates a new `RodaEngine` with the default "data" root path.
     pub fn new() -> Self {
         Self {
             root_path: "data",
@@ -32,6 +36,7 @@ impl RodaEngine {
         self.pin_cores = pin_cores;
     }
 
+    /// Creates a new `RodaEngine` with a custom root path for storage.
     pub fn new_with_root_path(root_path: &'static str) -> Self {
         Self {
             root_path,
@@ -42,6 +47,9 @@ impl RodaEngine {
         }
     }
 
+    /// Spawns a worker thread that executes the provided runnable in a loop.
+    ///
+    /// The worker will spin and yield if there is no work to do, minimizing latency.
     pub fn run_worker(&mut self, mut runnable: impl FnMut() -> bool + Send + 'static) {
         let worker_id = self.worker_handlers.len();
         let running = self.running.clone();
@@ -62,16 +70,17 @@ impl RodaEngine {
                 } else {
                     step_without_work_count += 1;
                 }
-                if step_without_work_count > 10 {
-                    spin_loop();
-                } else if step_without_work_count > 1000 {
+                if step_without_work_count > 1000 {
                     thread::yield_now();
+                } else if step_without_work_count > 10 {
+                    spin_loop();
                 }
             }
         });
         self.worker_handlers.push(handler);
     }
 
+    /// Creates a new `JournalStore` for sequential, append-only data storage.
     pub fn new_journal_store<State: Pod + Send>(
         &self,
         options: JournalStoreOptions,
@@ -79,10 +88,12 @@ impl RodaEngine {
         JournalStore::new(self.root_path, self.op_counter.clone(), options)
     }
 
+    /// Creates a new `SlotStore` for random-access, slot-based data storage.
     pub fn new_slot_store<State: Pod + Send>(&self, options: SlotStoreOptions) -> SlotStore<State> {
         SlotStore::new(self.root_path, self.op_counter.clone(), options)
     }
 
+    /// Blocks until the engine is idle (i.e., no operations have occurred for a short period).
     pub fn await_idle(&self, timeout: Duration) {
         let start = Instant::now();
         let mut last_op_count = self.op_counter.total_op_count();

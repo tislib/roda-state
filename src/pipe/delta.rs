@@ -3,7 +3,9 @@ use bytemuck::Pod;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-/// Compares current item with the previous item of the same key.
+/// Compares the current item with the previous item associated with the same key.
+///
+/// This stage is useful for calculating changes or deltas between events in a stream.
 pub struct Delta<K, T, Out, F, L> {
     key_fn: F,
     logic: L,
