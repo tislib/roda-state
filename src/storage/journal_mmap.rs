@@ -28,7 +28,7 @@ impl JournalMmap {
                 .open(p)?;
 
             file.set_len(total_size as u64)?;
-            unsafe { MmapOptions::new().map_mut(&file)? }
+            unsafe { MmapOptions::new().huge(Some(21)).map_mut(&file)? }
         } else {
             MmapOptions::new().len(total_size).map_anon()?
         };

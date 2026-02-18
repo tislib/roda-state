@@ -26,9 +26,10 @@ pub struct Summary {
     pub sensor_id: u64,
     pub min: f64,
     pub max: f64,
-    pub avg: f64,
+    pub sum: f64, // Changed from avg
     pub count: u64,
     pub timestamp: u64,
+    pub _pad: [u64; 2], // Pad to 64 bytes (1 cache line)
 }
 
 /// Key used for partitioning and indexing summaries
@@ -46,7 +47,7 @@ pub struct Alert {
     pub sensor_id: u64,
     pub timestamp: u64,
     pub severity: i32,
-    pub _pad0: i32,
+    pub _pad0: [i32; 3],
 }
 
 impl SensorKey {
@@ -69,26 +70,24 @@ impl Summary {
             sensor_id: r.sensor_id,
             min: r.value,
             max: r.value,
-            avg: r.value,
+            sum: 0.0,
             count: 1,
             timestamp: (r.timestamp / 100_000) * 100_000,
+            _pad: [0; 2],
         }
     }
 
-    /// Update the existing summary with a new reading.
     #[inline(always)]
     pub fn update(&mut self, r: &Reading) {
-        // Update Min/Max
-        if r.value < self.min {
-            self.min = r.value;
-        }
-        if r.value > self.max {
-            self.max = r.value;
-        }
+        self.min = self.min.min(r.value);
+        self.max = self.max.max(r.value);
 
-        // Online Average Calculation:
-        // new_avg = ((old_avg * count) + new_val) / (count + 1)
-        self.avg = (self.avg * self.count as f64 + r.value) / (self.count + 1) as f64;
+        self.sum += r.value;
         self.count += 1;
+    }
+
+    #[inline(always)]
+    pub fn avg(&self) -> f64 {
+        self.sum / self.count as f64
     }
 }

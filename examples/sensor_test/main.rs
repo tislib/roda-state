@@ -9,9 +9,10 @@ use std::time::{Duration, Instant};
 fn main() {
     println!("Starting Sensor Multistage Pipeline (Optimized)...");
     let start_time = Instant::now();
+    let readings_count = 100_000_000;
 
     // 1. Initialize StageEngine
-    let engine = StageEngine::<Reading, Reading>::with_capacity(1_000_000_000);
+    let engine = StageEngine::<Reading, Reading>::with_capacity(readings_count * 64);
 
     // 2. Add Aggregation Stage: Reading -> Summary
     let mut engine = engine
@@ -26,7 +27,7 @@ fn main() {
                 |s: &Summary| s.sensor_id,
                 |curr, prev| {
                     if let Some(p) = prev
-                        && curr.avg > p.avg * 1.5
+                        && curr.avg() > p.avg() * 1.5
                     {
                         return Some(Alert {
                             sensor_id: curr.sensor_id,
@@ -42,19 +43,12 @@ fn main() {
 
     // 4. INGEST DATA
     println!("\nPushing sensor readings...");
-    let count = 100_000_000;
-    let mut readings = Vec::with_capacity(count * 4);
 
-    for _ in 0..100_000_000 {
-        readings.push(Reading::from(1, 10.0, 10_000));
-        readings.push(Reading::from(1, 12.0, 20_000));
-        readings.push(Reading::from(1, 20.0, 110_000)); // Average jump
-        readings.push(Reading::from(1, 22.0, 120_000));
-    }
-    let readings_count = count * 4;
-
-    for r in readings {
-        engine.send(&r);
+    for _ in 0..readings_count / 4 {
+        engine.send(&(Reading::from(1, 10.0, 10_000)));
+        engine.send(&(Reading::from(1, 12.0, 20_000)));
+        engine.send(&(Reading::from(1, 20.0, 110_000))); // Average jump
+        engine.send(&(Reading::from(1, 22.0, 120_000)));
     }
 
     engine.await_idle(Duration::from_millis(100));
