@@ -2,6 +2,7 @@ use crate::stage::{OutputCollector, Stage};
 use bytemuck::Pod;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use fxhash::FxHashMap;
 
 /// Compares the current item with the previous item associated with the same key.
 ///
@@ -9,7 +10,7 @@ use std::marker::PhantomData;
 pub struct Delta<K, T, Out, F, L> {
     key_fn: F,
     logic: L,
-    last_values: HashMap<K, T>,
+    last_values: FxHashMap<K, T>,
     _phantom: PhantomData<(T, Out)>,
 }
 
@@ -25,7 +26,7 @@ where
         Self {
             key_fn,
             logic,
-            last_values: HashMap::new(),
+            last_values: FxHashMap::default(),
             _phantom: PhantomData,
         }
     }

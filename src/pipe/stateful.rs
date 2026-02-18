@@ -2,6 +2,7 @@ use crate::stage::{OutputCollector, Stage};
 use bytemuck::Pod;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use fxhash::FxHashMap;
 
 /// Maintains per-key state for stateful aggregations or processing.
 ///
@@ -11,7 +12,7 @@ pub struct Stateful<K, In, Out, KF, IF, FF> {
     key_fn: KF,
     init_fn: IF,
     fold_fn: FF,
-    storage: HashMap<K, Out>,
+    storage: FxHashMap<K, Out>,
     _phantom: PhantomData<In>,
 }
 
@@ -29,7 +30,7 @@ where
             key_fn,
             init_fn,
             fold_fn,
-            storage: HashMap::new(),
+            storage: FxHashMap::default(),
             _phantom: PhantomData,
         }
     }

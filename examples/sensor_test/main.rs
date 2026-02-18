@@ -12,7 +12,7 @@ fn main() {
     let readings_count = 100_000_000;
 
     // 1. Initialize StageEngine
-    let engine = StageEngine::<Reading, Reading>::with_capacity(readings_count * 64);
+    let engine = StageEngine::<Reading, Reading>::with_capacity(readings_count);
 
     // 2. Add Aggregation Stage: Reading -> Summary
     let mut engine = engine
