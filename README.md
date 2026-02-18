@@ -9,29 +9,17 @@ Ultra-high-performance, low-latency state computer for real-time analytics and e
 ## Example: From Sensor Readings to Alerts
 
 ```rust
-use roda_state::{StageEngine, pipe, stateful, delta};
-use bytemuck::{Pod, Zeroable};
 
-#[repr(C)]
-#[derive(Clone, Copy, Default, Pod, Zeroable)]
-struct Reading { sensor_id: u64, value: f64, timestamp: u64 }
-
-#[repr(C)]
-#[derive(Clone, Copy, Default, Pod, Zeroable)]
-struct Summary { sensor_id: u64, avg: f64, count: u64 }
-
-#[repr(C)]
-#[derive(Clone, Copy, Default, Pod, Zeroable, Debug)]
-struct Alert { sensor_id: u64, severity: i32 }
+....
 
 fn main() {
     // 1. Build a multistage pipeline
     let engine = StageEngine::<Reading, Reading>::with_capacity(1_000_000)
-        .add_stage(pipe![
+        .add_stage(pipe![ // Pipe is added to add_stage by static dispatch. It aims to better inlining instructions at compilation time
             stateful(
-                |r| r.sensor_id,
-                |r| Summary { sensor_id: r.sensor_id, avg: r.value, count: 1 },
-                |s, r| {
+                |r| r.sensor_id, // Seperate Reading feed by sensor_id 
+                |r| Summary { sensor_id: r.sensor_id, avg: r.value, count: 1 }, // Initialize summary each time seeing new sensor_id
+                |s, r| { // Update summary
                     s.avg = (s.avg * s.count as f64 + r.value) / (s.count + 1) as f64;
                     s.count += 1;
                 }
@@ -60,6 +48,8 @@ fn main() {
     }
 }
 ```
+
+Roda utilizes a Memory-Mapped Journaling architecture. Unlike a Ring Buffer, Roda uses an append-only, immutable log (Journal) for stage-to-stage communication. Each stage operates in its own thread, polling the Atomic Write Index with Acquire/Release semantics. This design provides a persistent, zero-copy audit trail of all state transitions while maintaining nanosecond-level handoff latency.
 
 ---
 
