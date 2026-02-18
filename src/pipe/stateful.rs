@@ -1,8 +1,7 @@
 use crate::stage::{OutputCollector, Stage};
 use bytemuck::Pod;
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use fxhash::FxHashMap;
+use std::marker::PhantomData;
 
 /// Maintains per-key state for stateful aggregations or processing.
 ///
