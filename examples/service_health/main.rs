@@ -1,6 +1,6 @@
 mod models;
 
-use models::{Alert, Reading, SensorKey, Summary};
+use models::{Alert, Reading, ServiceKey, Summary};
 use roda_state::StageEngine;
 use roda_state::pipe;
 use roda_state::{dedup_by, delta, stateful};
@@ -16,28 +16,22 @@ fn main() {
     // 2. Add Aggregation Stage: Reading -> Summary
     // We also include a deduplicator at the start to drop identical raw readings.
     let engine = engine.add_stage(pipe![
-        dedup_by(|r: &Reading| (r.sensor_id, (r.value * 1000.0) as u64)), // Noise filter
-        stateful(SensorKey::from_reading, Summary::init, Summary::update),
-        // inspect(|s: &Summary| {
-        //     println!(
-        //         "STAGE 1 [AGG]: Sensor {} Avg updated to {:.2}",
-        //         s.sensor_id, s.avg
-        //     );
-        // })
+        dedup_by(|r: &Reading| (r.service_id, (r.value * 1000.0) as u64)), // Noise filter
+        stateful(ServiceKey::from_reading, Summary::init, Summary::update),
     ]);
 
     // 3. Add Anomaly Detection Stage: Summary -> Alert
     // Uses Delta to compare current state with previous known state for that sensor.
     let mut engine = engine.add_stage(pipe![
         delta(
-            |s: &Summary| s.sensor_id,
+            |s: &Summary| s.service_id,
             |curr, prev| {
                 if let Some(p) = prev
-                    && curr.avg > p.avg * 1.5
+                    && curr.avg() > p.avg() * 1.5
                 {
                     // Logic: Alert if the average jumps by more than 50%
                     return Some(Alert {
-                        sensor_id: curr.sensor_id,
+                        service_id: curr.service_id,
                         timestamp: curr.timestamp,
                         severity: 1,
                         ..Default::default()
@@ -47,13 +41,7 @@ fn main() {
             }
         ),
         // Deduplicate Alerts: Only notify if the alert is new/changed for this sensor
-        dedup_by(|a: &Alert| a.sensor_id),
-        // inspect(|a: &Alert| {
-        //     println!(
-        //         "STAGE 2 [ALERT]: 🚨 Anomaly detected for Sensor {}!",
-        //         a.sensor_id
-        //     );
-        // })
+        dedup_by(|a: &Alert| a.service_id),
     ]);
 
     // 4. Ingest Data
@@ -82,8 +70,8 @@ fn main() {
     println!("\n--- Final Alert Journal ---");
     while let Some(alert) = engine.try_receive() {
         println!(
-            "Received in Main: Alert for Sensor {} at {}",
-            alert.sensor_id, alert.timestamp
+            "Received in Main: Alert for Service {} at {}",
+            alert.service_id, alert.timestamp
         );
     }
 
