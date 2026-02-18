@@ -67,10 +67,10 @@ Explore more detailed implementations in the [examples](examples) folder:
 
 Roda's design translates into real-world performance. Below are results from our latest benchmarks (see [examples](examples) for logs):
 
-| Example | Throughput | IPC | Branch Accuracy | L1 Cache Miss |
-|:---|:---|:---|:---|:---|
+| Example | Throughput    | IPC | Branch Accuracy | L1 Cache Miss |
+|:---|:--------------|:---|:---|:---|
 | [**Sensor Test**](examples/sensor_test) | **56.1 MEPS** | 1.00 | 94.5% | 3.16% |
-| [**Service Health**](examples/service_health) | **19.1 MEPS** | 1.55 | 97.2% | 1.65% |
+| [**Service Health**](examples/service_health) | **57.7 MEPS** | 1.55 | 97.2% | 1.65% |
 | [**MBO Replay**](examples/databento_replay) | **4.05 MEPS** | 0.74 | 97.3% | 1.94% |
 
 *MEPS: Million Events Per Second.
