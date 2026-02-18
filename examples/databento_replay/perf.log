@@ -1,0 +1,32 @@
+[2026-02-18 18:22:48.476] [info] [System] Throughput: 4.05 MEPS (Million Events Per Second)
+[2026-02-18 18:22:48.476] [info] [System] Done in 5.972785436s
+[2026-02-18 18:22:48.476] [info] [System] Final Imbalance Signals processed: 24191908
+[2026-02-18 18:22:48.476] [info] [Analysis] TTS Latency (Tick-to-Signal): 	min=751ns,	max=1.89ms,	mean=4.7us,	p50=2.9us,	p90=6.1us,	p99=34.3us,	p999=208.4us,	p9999=1.47ms
+
+ Performance counter stats for './target/release/examples/databento_replay --file ../xnas-itch-20251201.mbo.dbn.zst':
+
+    30,247,676,921      task-clock                       #    4.706 CPUs utilized
+               131      context-switches                 #    4.331 /sec
+                23      cpu-migrations                   #    0.760 /sec
+         1,467,375      page-faults                      #   48.512 K/sec
+    90,133,210,025      instructions                     #    0.74  insn per cycle
+                                                  #    0.07  stalled cycles per insn     (35.68%)
+   121,951,154,429      cycles                           #    4.032 GHz                         (35.68%)
+     6,455,190,375      stalled-cycles-frontend          #    5.29% frontend cycles idle        (35.70%)
+    13,924,242,461      branches                         #  460.341 M/sec                       (35.71%)
+       371,266,723      branch-misses                    #    2.67% of all branches             (35.73%)
+    47,525,160,227      L1-dcache-loads                  #    1.571 G/sec                       (35.74%)
+       921,345,162      L1-dcache-load-misses            #    1.94% of all L1-dcache accesses   (35.74%)
+     6,012,243,250      L1-icache-loads                  #  198.767 M/sec                       (35.74%)
+        71,520,550      L1-icache-load-misses            #    1.19% of all L1-icache accesses   (35.73%)
+        54,636,537      dTLB-loads                       #    1.806 M/sec                       (35.73%)
+         8,296,974      dTLB-load-misses                 #   15.19% of all dTLB cache accesses  (35.72%)
+            33,594      iTLB-loads                       #    1.111 K/sec                       (35.71%)
+             2,800      iTLB-load-misses                 #    8.33% of all iTLB cache accesses  (35.70%)
+       308,376,813      L1-dcache-prefetches             #   10.195 M/sec                       (35.69%)
+
+       6.427123071 seconds time elapsed
+
+      27.487672000 seconds user
+       2.760665000 seconds sys
+

@@ -8,7 +8,7 @@
 - **Accurate TTS Metrics**: Synchronized time measurement and warm-up stabilization ensure reported Tick-to-Signal latencies represent steady-state production performance.
 - **SIMD-Friendly Signal Calculation**: Alpha signals (Weighted Order Book Imbalance) are calculated using vectorized loops that the compiler can easily optimize for SIMD instructions.
 - **Real-Time Simulation**: Supports a `--simulate-live` mode to replay historical data at its original exchange-timestamp speed, allowing for realistic system testing.
-- **High Throughput**: Capable of processing over **5M+ events per second (MEPS)** on a single core.
+- **High Throughput**: Capable of processing over **4M+ events per second (MEPS)** on a single core.
 
 ## Pipeline Architecture
 
@@ -56,11 +56,16 @@ The engine reports:
 
 ### Benchmark Results
 
-On a typical performance-tuned environment (`--pin-cores`), the system achieves:
+Based on the latest benchmarks ([perf.log](perf.log)), on a typical performance-tuned environment (`--pin-cores`), the system achieves:
 
 ```text
-Final Imbalance Signals: 24,191,906
-Throughput: 7.40 MEPS (Million Events Per Second)
-Execution Time: 3.27s
-TTS Latency (Tick-to-Signal): p50=8.0us, p90=28.7us, p99=56.7us, p999=165.4us
+Final Imbalance Signals: 24,191,908
+Throughput: 4.05 MEPS (Million Events Per Second)
+Execution Time: 5.97s
+TTS Latency (Tick-to-Signal): p50=2.9us, p90=6.1us, p99=34.3us, p999=208.4us, p9999=1.47ms
+
+Architectural Stats:
+- IPC (Instructions Per Cycle): 0.74
+- Branch Misprediction: 2.67%
+- L1 Data Cache Miss: 1.94%
 ```

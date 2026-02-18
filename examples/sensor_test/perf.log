@@ -1,0 +1,28 @@
+Throughput: 56158920.760324396/s
+
+Performance counter stats for './target/release/examples/sensor_test':
+
+     6,589,845,767      task-clock                       #    2.106 CPUs utilized
+               136      context-switches                 #   20.638 /sec
+                11      cpu-migrations                   #    1.669 /sec
+         1,595,285      page-faults                      #  242.082 K/sec
+    25,295,142,085      instructions                     #    1.00  insn per cycle
+                                                  #    0.16  stalled cycles per insn     (35.64%)
+    25,334,185,308      cycles                           #    3.844 GHz                         (35.65%)
+     3,977,171,557      stalled-cycles-frontend          #   15.70% frontend cycles idle        (35.68%)
+     3,983,405,661      branches                         #  604.476 M/sec                       (35.72%)
+       217,839,166      branch-misses                    #    5.47% of all branches             (35.75%)
+    11,405,960,776      L1-dcache-loads                  #    1.731 G/sec                       (35.77%)
+       360,769,127      L1-dcache-load-misses            #    3.16% of all L1-dcache accesses   (35.76%)
+     5,329,078,199      L1-icache-loads                  #  808.680 M/sec                       (35.74%)
+        58,223,439      L1-icache-load-misses            #    1.09% of all L1-icache accesses   (35.73%)
+         6,830,860      dTLB-loads                       #    1.037 M/sec                       (35.73%)
+         6,213,896      dTLB-load-misses                 #   90.97% of all dTLB cache accesses  (35.73%)
+             1,844      iTLB-loads                       #  279.824 /sec                        (35.72%)
+               456      iTLB-load-misses                 #   24.73% of all iTLB cache accesses  (35.69%)
+       115,743,125      L1-dcache-prefetches             #   17.564 M/sec                       (35.66%)
+
+       3.129683481 seconds time elapsed
+
+       3.564578000 seconds user
+       3.025642000 seconds sys

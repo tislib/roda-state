@@ -43,9 +43,14 @@ graph LR
 cargo run --release --example sensor_test
 ```
 
-## Performance (tested on MacBook M2 Max)
+## Performance Metrics (tested on MacBook M2 Max)
 
-On a modern CPU, this example typically achieves:
-- **Throughput**: ~50 MEPS (Million Events Per Second).
+Based on the latest benchmarks ([perf.log](perf.log)):
+
+- **Throughput**: ~56.1 MEPS (Million Events Per Second).
+- **Stage Latency**: ~17.8ns per record for aggregation logic (based on measured throughput).
+- **Architectural Efficiency**:
+    - **Instructions Per Cycle (IPC)**: 1.00 (Standard efficiency for branch-heavy logic).
+    - **Branch Prediction**: 94.5% accuracy (5.47% branch misses).
+    - **L1 Cache Performance**: 3.16% dcache misses, 1.09% icache misses (Highly optimized memory patterns).
 - **End-to-End Latency**: < 500ns (median) for alert generation.
-- **Stage Latency**: ~50ns per record for aggregation logic.

@@ -1,0 +1,26 @@
+ Performance counter stats for './target/release/examples/service_health':
+
+     8,688,683,260      task-clock                       #    1.657 CPUs utilized
+               162      context-switches                 #   18.645 /sec
+                29      cpu-migrations                   #    3.338 /sec
+         1,441,679      page-faults                      #  165.926 K/sec
+    53,170,512,862      instructions                     #    1.55  insn per cycle
+                                                  #    0.07  stalled cycles per insn     (35.64%)
+    34,386,495,168      cycles                           #    3.958 GHz                         (35.65%)
+     3,647,092,842      stalled-cycles-frontend          #   10.61% frontend cycles idle        (35.68%)
+     7,020,114,031      branches                         #  807.961 M/sec                       (35.71%)
+       194,097,581      branch-misses                    #    2.76% of all branches             (35.74%)
+    18,497,493,563      L1-dcache-loads                  #    2.129 G/sec                       (35.78%)
+       304,831,772      L1-dcache-load-misses            #    1.65% of all L1-dcache accesses   (35.78%)
+     4,922,882,303      L1-icache-loads                  #  566.586 M/sec                       (35.78%)
+        55,174,913      L1-icache-load-misses            #    1.12% of all L1-icache accesses   (35.78%)
+         5,886,803      dTLB-loads                       #  677.525 K/sec                       (35.74%)
+         5,080,489      dTLB-load-misses                 #   86.30% of all dTLB cache accesses  (35.72%)
+             2,456      iTLB-loads                       #  282.667 /sec                        (35.69%)
+               813      iTLB-load-misses                 #   33.10% of all iTLB cache accesses  (35.66%)
+        80,658,824      L1-dcache-prefetches             #    9.283 M/sec                       (35.64%)
+
+       5.242189520 seconds time elapsed
+
+       6.030655000 seconds user
+       2.658407000 seconds sys

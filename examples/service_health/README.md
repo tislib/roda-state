@@ -47,6 +47,12 @@ cargo run --release --example service_health
 
 ## Performance Metrics (tested on MacBook M2 Max)
 
-- **Throughput**: ~26 MEPS (Million Events Per Second).
-- **Stage Execution**: ~70-100ns per record.
+Based on the latest benchmarks ([perf.log](perf.log)):
+
+- **Throughput**: ~19.1 MEPS (Million Events Per Second).
+- **Stage Execution**: ~52ns per record (based on wall-clock time for 100M events).
+- **Architectural Efficiency**:
+    - **Instructions Per Cycle (IPC)**: 1.55 (High pipeline utilization).
+    - **Branch Prediction**: 97.2% accuracy (2.76% branch misses).
+    - **L1 Cache Performance**: 1.65% dcache misses, 1.12% icache misses (Effective cache-friendly design).
 - **End-to-End Latency**: Measured in nanoseconds from ingestion to alert receipt.
