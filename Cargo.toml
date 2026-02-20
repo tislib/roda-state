@@ -2,8 +2,12 @@
 name = "roda-state"
 version = "0.1.0"
 edition = "2024"
-description = "A wait-free, cache-friendly state synchronization engine for HFT."
-authors = ["Your Name"]
+description = "A zero-copy, lock-free multi-threaded stage engine for ultra-low latency pipelines."
+authors = ["Taleh Ibrahimli"]
+repository = "https://github.com/tislib/roda-state"
+license = "Apache-2.0"
+keywords = ["lock-free", "hft", "concurrency", "pipeline", "low-latency"]
+categories = ["concurrency", "data-structures"]
 
 [dependencies]
 bytemuck = { version = "1.25.0", features = ["derive"] }
