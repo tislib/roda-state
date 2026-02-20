@@ -1,6 +1,5 @@
 use crate::journal_store::{JournalStore, JournalStoreOptions};
 use crate::op_counter::OpCounter;
-use crate::slot_store::{SlotStore, SlotStoreOptions};
 use bytemuck::Pod;
 use std::hint::spin_loop;
 use std::sync::Arc;
@@ -86,11 +85,6 @@ impl RodaEngine {
         options: JournalStoreOptions,
     ) -> JournalStore<State> {
         JournalStore::new(self.root_path, self.op_counter.clone(), options)
-    }
-
-    /// Creates a new `SlotStore` for random-access, slot-based data storage.
-    pub fn new_slot_store<State: Pod + Send>(&self, options: SlotStoreOptions) -> SlotStore<State> {
-        SlotStore::new(self.root_path, self.op_counter.clone(), options)
     }
 
     /// Blocks until the engine is idle (i.e., no operations have occurred for a short period).

@@ -10,7 +10,6 @@ mod macros;
 pub mod measure;
 mod op_counter;
 mod pipe;
-mod slot_store;
 mod stage;
 mod stage_engine;
 mod storage;
