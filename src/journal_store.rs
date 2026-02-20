@@ -18,9 +18,7 @@ pub struct JournalStoreOptions {
     pub in_memory: bool,
 }
 
-/// An append-only store for sequential data.
-///
-/// It uses memory-mapped files for persistence and high-performance I/O.
+// Work in Progress, not used currently.
 pub struct JournalStore<State: Pod + Send> {
     storage: JournalMmap,
     op_counter: Arc<OpCounter>,
