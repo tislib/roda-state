@@ -66,22 +66,25 @@ impl JournalMmap {
     /// Casts bytes at offset to a reference of T.
     #[inline(always)]
     pub(crate) fn read<T: Pod>(&self, offset: usize) -> &T {
-        let end = offset + size_of::<T>();
+        let size = size_of::<T>();
+        let end = offset + size;
         assert!(
             end <= self.len,
             "Read crosses buffer boundary - alignment issue?"
         );
-        bytemuck::from_bytes(&self.slice()[offset..end])
+        let slice = unsafe { std::slice::from_raw_parts(self.ptr.add(offset), size) };
+        bytemuck::from_bytes(slice)
     }
 
     #[inline(always)]
     pub(crate) fn read_window_const<T: Pod, const N: usize>(&self, offset: usize) -> &[T] {
-        let end = offset + size_of::<T>() * N;
+        let size = size_of::<T>() * N;
+        let end = offset + size;
         assert!(
             end <= self.len,
             "Read crosses buffer boundary - alignment issue?"
         );
-        let bytes = &self.slice()[offset..end];
+        let bytes = unsafe { std::slice::from_raw_parts(self.ptr.add(offset), size) };
 
         bytemuck::cast_slice(bytes)
     }
@@ -91,12 +94,13 @@ impl JournalMmap {
     /// This is more efficient than calling `read` multiple times.
     #[inline(always)]
     pub(crate) fn read_window<T: Pod>(&self, offset: usize, count: usize) -> &[T] {
-        let end = offset + size_of::<T>() * count;
+        let size = size_of::<T>() * count;
+        let end = offset + size;
         assert!(
             end <= self.len,
             "Read crosses buffer boundary - alignment issue?"
         );
-        let bytes = &self.slice()[offset..end];
+        let bytes = unsafe { std::slice::from_raw_parts(self.ptr.add(offset), size) };
 
         bytemuck::cast_slice(bytes)
     }
@@ -107,34 +111,23 @@ impl JournalMmap {
     /// Panics if the buffer is full.
     #[inline(always)]
     pub(crate) fn append<T: Pod>(&mut self, state: &T) {
+        assert!(!self.read_only, "Cannot mutate read-only buffer");
         let current_pos = self.write_index.load(std::sync::atomic::Ordering::Relaxed);
         let size = size_of::<T>();
         let end = current_pos + size;
 
-        let dest_slice = self.slice_mut();
-
         // Check for boundary crossing
-        assert!(
-            end <= dest_slice.len(),
-            "Journal is full. Cannot append more data."
-        );
+        assert!(end <= self.len, "Journal is full. Cannot append more data.");
 
         // Perform the write
-        dest_slice[current_pos..end].copy_from_slice(bytemuck::bytes_of(state));
+        unsafe {
+            let dest_ptr = self.ptr.add(current_pos);
+            let src_ptr = bytemuck::bytes_of(state).as_ptr();
+            std::ptr::copy_nonoverlapping(src_ptr, dest_ptr, size);
+        }
 
         self.write_index
             .store(end, std::sync::atomic::Ordering::Release);
-    }
-
-    #[inline(always)]
-    fn slice(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
-    }
-
-    #[inline(always)]
-    fn slice_mut(&mut self) -> &mut [u8] {
-        assert!(!self.read_only, "Cannot mutate read-only buffer");
-        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
     }
 
     #[inline(always)]
@@ -360,5 +353,16 @@ mod tests {
         let val2: u64 = 0x1122334455667788;
         journal.append(&val2);
         assert_eq!(*journal.read::<u64>(8), val2);
+    }
+
+    #[test]
+    fn test_mixed_type_alignment_failure() {
+        let mut journal = JournalMmap::new(None, 1024).unwrap();
+
+        journal.append(&0xAA_u8); // write_index becomes 1
+        journal.append(&0xDEADBEEF_u32); // written at offset 1
+
+        // This will panic and FAIL the test runner because offset 1 is unaligned for u32.
+        let _val: &u8 = journal.read(0);
     }
 }
